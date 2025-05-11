@@ -3,24 +3,11 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <parent>
-        <groupId>pt.isel.cn.landmarks</groupId>
-        <artifactId>CN-TF</artifactId>
-        <version>1.0</version>
-    </parent>
 
-    <artifactId>LandmarksClient</artifactId>
-
-    <dependencies>
-        <dependency>
-            <groupId>pt.isel.cn.landmarks</groupId>
-            <artifactId>LandmarksContract</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>pt.isel.cn.landmarks</groupId>
-            <artifactId>IPLookup</artifactId>
-        </dependency>
-    </dependencies>
+    <artifactId>CN-TF</artifactId>
+    <groupId>pt.isel.cn.landmarks</groupId>
+    <version>1.0</version>
+    <packaging>pom</packaging>
 
     <properties>
         <maven.compiler.source>21</maven.compiler.source>
