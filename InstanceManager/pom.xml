@@ -11,6 +11,14 @@
 
     <artifactId>InstanceManager</artifactId>
 
+    <dependencies>
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-compute</artifactId>
+            <version>1.71.0</version>
+        </dependency>
+    </dependencies>
+
     <properties>
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>

@@ -11,6 +11,27 @@
 
     <artifactId>LandmarksApp</artifactId>
 
+    <dependencies>
+        <dependency>
+            <groupId>pt.isel.cn.landmarks</groupId>
+            <artifactId>LandmarksDomain</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>pt.isel.cn.landmarks</groupId>
+            <artifactId>LandmarksStorage</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-pubsub</artifactId>
+            <version>1.138.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-vision</artifactId>
+            <version>3.60.0</version>
+        </dependency>
+    </dependencies>
+
     <properties>
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
