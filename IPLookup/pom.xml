@@ -17,7 +17,14 @@
             <artifactId>google-cloud-compute</artifactId>
             <version>1.71.0</version>
         </dependency>
+        <dependency>
+            <groupId>com.google.cloud.functions</groupId>
+            <artifactId>cloud-functions-framework</artifactId>
+            <version>1.1.4</version>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
+
 
     <properties>
         <maven.compiler.source>21</maven.compiler.source>
