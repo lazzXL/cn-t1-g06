@@ -1,3 +1,5 @@
+package pt.isel.cn.landmarks.domain;
+
 /**
  * This class represents metadata for a landmark.
  * <p>

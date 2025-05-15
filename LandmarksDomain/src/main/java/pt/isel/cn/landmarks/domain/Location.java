@@ -1,3 +1,5 @@
+package pt.isel.cn.landmarks.domain;
+
 /**
  * This class represents a geographical location with latitude and longitude.
  *
