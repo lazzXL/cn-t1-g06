@@ -17,16 +17,16 @@
             <artifactId>LandmarksContract</artifactId>
             <version>1.0</version>
         </dependency>
-<!--        <dependency>-->
-<!--            <groupId>pt.isel.cn.landmarks</groupId>-->
-<!--            <artifactId>LandmarksDomain</artifactId>-->
-<!--            <version>1.0</version>-->
-<!--        </dependency>-->
-<!--        <dependency>-->
-<!--            <groupId>pt.isel.cn.landmarks</groupId>-->
-<!--            <artifactId>LandmarksStorage</artifactId>-->
-<!--            <version>1.0</version>-->
-<!--        </dependency>-->
+        <dependency>
+            <groupId>pt.isel.cn.landmarks</groupId>
+            <artifactId>LandmarksDomain</artifactId>
+            <version>1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>pt.isel.cn.landmarks</groupId>
+            <artifactId>LandmarksStorage</artifactId>
+            <version>1.0</version>
+        </dependency>
         <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-pubsub</artifactId>
