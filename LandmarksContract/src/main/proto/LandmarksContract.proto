@@ -31,11 +31,11 @@ message Landmark {
   string name = 1;
   double latitude = 2;
   double longitude = 3;
-  float confidence = 4;
+  double confidence = 4;
 }
 
 message ConfidenceThreshold {
-  float confidence_threshold = 1;
+  double confidence_threshold = 1;
 }
 
 message GetPhotosResponse {
