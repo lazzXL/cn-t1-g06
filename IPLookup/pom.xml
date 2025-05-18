@@ -23,7 +23,13 @@
             <version>1.1.4</version>
             <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>pt.isel.cn.landmarks</groupId>
+            <artifactId>LandmarksDomain</artifactId>
+            <version>1.0</version>
+        </dependency>
     </dependencies>
+
 
 
     <properties>
