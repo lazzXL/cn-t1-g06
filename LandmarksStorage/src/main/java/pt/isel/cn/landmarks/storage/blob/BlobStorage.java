@@ -1,11 +1,18 @@
-package pt.isel.cn.landmarks.storage.cloud;
+package pt.isel.cn.landmarks.storage.blob;
 
 /**
- * This interface represents a cloud storage system.
+ * This interface represents a BLOB storage system.
  * <p>
- * It can be implemented by various cloud storage providers.
+ * A BLOB (Binary Large Object) storage is a type of cloud storage
+ * meant for storing masses of data in binary form that don't
+ * necessarily conform to any file format. This can include images,
+ * media files, or any other type of binary data that is too large
+ * to be stored in a traditional database.
+ * <p>
+ * This interface provides methods for uploading, downloading,
+ * making public, and checking the existence of blobs in the cloud storage.
  */
-public interface CloudStorage {
+public interface BlobStorage {
     /**
      * Uploads a file to the cloud storage.
      *
@@ -40,4 +47,13 @@ public interface CloudStorage {
      * @return The public URL of the file.
      */
     public String getPublicUrl(String bucketName, String blobName);
+
+    /**
+     * Checks if a blob exists in the cloud storage.
+     * @param bucketName - The name of the bucket where the file is stored.
+     * @param blobName - The unique identifier for the file.
+     *
+     * @return True if the blob exists, false otherwise.
+     */
+    public boolean blobExists(String bucketName, String blobName);
 }

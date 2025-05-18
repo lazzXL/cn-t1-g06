@@ -15,12 +15,15 @@ import pt.isel.cn.landmarks.storage.metadata.MetadataStorage;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 import java.util.logging.Logger;
 
 public class Service {
     private final CloudStorage cloudStorage;
     private final MetadataStorage metadataStorage;
     private final LandmarksPublisher landmarksPublisher;
+
+    private static final String PHOTOS_BUCKET = Config.PHOTOS_BUCKET;
 
     private static final Logger logger = Logger.getLogger(Service.class.getName());
 
@@ -29,43 +32,28 @@ public class Service {
         this.metadataStorage = metadataStorage;
         this.landmarksPublisher = landmarksPublisher;
     }
-
     /**
-     * Pre-processes the photo by checking its metadata. If metadata exists and
-     * the status is not FAILURE, then the photo is already present in the system and is
-     * currently being processed.
+     * Submits a photo to the cloud if it doesn't already exist
+     * and makes an analysis request.
      * <p>
-     * If the metadata does not exist, we should proceed to the storage of the
-     * photo in the cloud and the metadata in the database.
-     *
-     * @param photoId The ID of the photo to pre-process.
-     * @return The photoId if processing is successful, null otherwise.
-     */
-    public String preProcessPhoto(String photoId) {
-        AnalysisMetadata metadata = metadataStorage.getAnalysisMetadata(photoId);
-        if (metadata == null) {
-            return null;
-        }
-        if (metadata.status() == Status.FAILURE) {
-            landmarksPublisher.publish(photoId, metadata.photoName());
-        }
-        return photoId;
-    }
-
-    /**
-     * Submits a photo to the cloud and metadata storage and publishes it for processing.
+     * The photo itself is only stored once in the blob storage. However,
+     * there can be multiple analysis requests for the same photo,
+     * each having its results metadata stored in the metadata storage.
      *
      * @param photoId The ID of the photo to submit.
      * @param photoName The name of the photo.
      * @param photoBytes The byte array of the photo.
      * @return Either a PhotoSubmitError or null if successful.
      */
-    public Either<PhotoSubmitError, Void> submitPhoto(String photoId, String photoName, byte[] photoBytes) {
+    public Either<PhotoSubmitError, String> submitPhoto(String photoId, String photoName, byte[] photoBytes) {
+        String requestId = UUID.randomUUID().toString();
         try {
-            cloudStorage.upload(Config.PHOTOS_BUCKET, photoId, "image/png", photoBytes);
-            cloudStorage.makePublic(Config.PHOTOS_BUCKET, photoId);
-            landmarksPublisher.publish(photoId, photoName);
-            return Either.right(null);
+            if (!cloudStorage.blobExists(PHOTOS_BUCKET, photoId)) {
+                cloudStorage.upload(PHOTOS_BUCKET, photoId, "image/png", photoBytes);
+                cloudStorage.makePublic(PHOTOS_BUCKET, photoId);
+            }
+            landmarksPublisher.publish(requestId, photoId, photoName);
+            return Either.right(requestId);
         } catch (Exception e) {
             logger.severe("Error submitting photo: " + e.getMessage());
             return Either.left(new PhotoSubmitError());
@@ -73,14 +61,14 @@ public class Service {
     }
 
     /**
-     * Looks up a photo by its ID and retrieves its metadata.
+     * Looks up the results of a photo analysis by the request ID.
      *
-     * @param photoId The ID of the photo to look up.
+     * @param requestId The ID of the request.
      * @return Either a LookupError or the AnalysisMetadata if successful.
      */
-    public Either<LookupError, AnalysisMetadata> lookupPhoto(String photoId) {
+    public Either<LookupError, AnalysisMetadata> lookupResults(String requestId) {
         try {
-            AnalysisMetadata analysisMetadata = metadataStorage.getAnalysisMetadata(photoId);
+            AnalysisMetadata analysisMetadata = metadataStorage.getAnalysisMetadata(requestId);
 
             if (analysisMetadata == null) {
                 return Either.left(new LookupError(LookupErrorType.NOT_FOUND));
@@ -102,12 +90,12 @@ public class Service {
     }
 
     /**
-     * Retrieves all photos that have a confidence score above the specified threshold.
+     * Retrieves all analysis metadata above a certain confidence threshold.
      *
      * @param confidenceThreshold The confidence threshold.
      * @return Either a PhotosByConfidenceError or a list of AnalysisMetadata if successful.
      */
-    public Either<PhotosByConfidenceError, List<AnalysisMetadata>> getPhotosByConfidenceThreshold(double confidenceThreshold) {
+    public Either<PhotosByConfidenceError, List<AnalysisMetadata>> getResultsByConfidenceThreshold(double confidenceThreshold) {
         try {
             AnalysisMetadata[] metadataArray = metadataStorage.getAnalysisMetadataByConfidenceThreshold(confidenceThreshold);
             if (metadataArray == null || metadataArray.length == 0) {

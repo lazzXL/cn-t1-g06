@@ -5,7 +5,9 @@ import pt.isel.cn.landmarks.domain.LandmarkMetadata;
 import pt.isel.cn.landmarks.domain.Status;
 
 /**
- * This interface defines the contract for the metadata storage
+ * This interface defines the contract metadata storage.
+ * <p>
+ * It provides methods to save, update, and retrieve photo analysis metadata.
  */
 public interface MetadataStorage {
     /**

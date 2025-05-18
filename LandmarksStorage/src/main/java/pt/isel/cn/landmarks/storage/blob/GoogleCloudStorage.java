@@ -1,4 +1,4 @@
-package pt.isel.cn.landmarks.storage.cloud;
+package pt.isel.cn.landmarks.storage.blob;
 
 import com.google.cloud.ReadChannel;
 import com.google.cloud.WriteChannel;
@@ -7,16 +7,13 @@ import com.google.cloud.storage.*;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.PrintStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.logging.Logger;
 
-public class GoogleCloudStorage implements CloudStorage {
+public class GoogleCloudStorage implements BlobStorage {
     private final Storage storage;
 
     public GoogleCloudStorage(Storage storage) {
@@ -83,5 +80,12 @@ public class GoogleCloudStorage implements CloudStorage {
     @Override
     public String getPublicUrl(String bucketName, String blobName) {
         return "gs://" + bucketName + "/" + blobName;
+    }
+
+    @Override
+    public boolean blobExists(String bucketName, String blobName) {
+        BlobId blobId = BlobId.of(bucketName, blobName);
+        Blob blob = storage.get(blobId);
+        return blob != null;
     }
 }
