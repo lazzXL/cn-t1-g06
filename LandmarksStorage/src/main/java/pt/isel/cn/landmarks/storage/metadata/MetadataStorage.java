@@ -13,26 +13,27 @@ public interface MetadataStorage {
     /**
      * Saves the analysis metadata.
      *
+     * @param requestId The unique identifier for the request.
      * @param metadata The metadata to save.
      */
-    public void saveAnalysisMetadata(AnalysisMetadata metadata);
+    public void saveAnalysisMetadata(String requestId, AnalysisMetadata metadata);
 
     /**
      * Updates the analysis metadata.
      *
-     * @param photoId The unique identifier for the photo.
+     * @param requestId The unique identifier for the request.
      * @param landmarks An array of LandmarkMetadata objects representing the detected landmarks.
      * @param status The status of the analysis.
      */
-    public void updateAnalysisMetadata(String photoId, LandmarkMetadata[] landmarks, Status status);
+    public void updateAnalysisMetadata(String requestId, LandmarkMetadata[] landmarks, Status status);
 
     /**
      * Retrieves the analysis metadata by photo ID.
      *
-     * @param photoId The unique identifier for the photo.
+     * @param requestId The unique identifier for the request.
      * @return The analysis metadata for the specified photo ID.
      */
-    public AnalysisMetadata getAnalysisMetadata(String photoId);
+    public AnalysisMetadata getAnalysisMetadata(String requestId);
 
     /**
      * Retrieves all analysis metadata above a certain confidence threshold.

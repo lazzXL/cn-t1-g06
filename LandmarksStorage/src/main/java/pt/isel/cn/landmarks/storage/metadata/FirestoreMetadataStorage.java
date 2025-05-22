@@ -14,24 +14,24 @@ public class FirestoreMetadataStorage implements MetadataStorage {
     }
 
     @Override
-    public void saveAnalysisMetadata(AnalysisMetadata metadata) {
+    public void saveAnalysisMetadata(String requestId, AnalysisMetadata metadata) {
         firestore.collection(Config.METADATA_COLLECTION)
-                .document(metadata.photoId())
+                .document(requestId)
                 .set(metadata);
     }
 
     @Override
-    public void updateAnalysisMetadata(String photoId, LandmarkMetadata[] landmarks, Status status) {
+    public void updateAnalysisMetadata(String requestId, LandmarkMetadata[] landmarks, Status status) {
         firestore.collection(Config.METADATA_COLLECTION)
-                .document(photoId)
+                .document(requestId)
                 .update("landmarks", landmarks, "status", status);
     }
 
     @Override
-    public AnalysisMetadata getAnalysisMetadata(String photoId) {
+    public AnalysisMetadata getAnalysisMetadata(String requestId) {
         try {
             return firestore.collection(Config.METADATA_COLLECTION)
-                    .whereEqualTo("photoId", photoId)
+                    .whereEqualTo("requestId", requestId)
                     .get()
                     .get()
                     .getDocuments()
