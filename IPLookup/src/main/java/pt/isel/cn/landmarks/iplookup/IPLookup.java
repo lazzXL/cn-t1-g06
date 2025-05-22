@@ -1,29 +1,35 @@
+package pt.isel.cn.landmarks.iplookup;
+
+import com.google.cloud.compute.v1.Instance;
+import com.google.cloud.compute.v1.InstancesClient;
 import com.google.cloud.functions.HttpFunction;
 import com.google.cloud.functions.HttpRequest;
 import com.google.cloud.functions.HttpResponse;
+import com.google.gson.Gson;
+import pt.isel.cn.landmarks.iplookup.dto.IPsPayload;
+import pt.isel.cn.landmarks.iplookup.error.IPLookupError;
+import pt.isel.cn.landmarks.iplookup.error.InstanceGroupNotFoundError;
+import pt.isel.cn.landmarks.iplookup.error.InvalidParameterError;
 import pt.isel.cn.landmarks.domain.Either;
-import pt.isel.cn.iplookup.error.IPLookupError;
-import pt.isel.cn.iplookup.error.InvalidParameterError;
-import pt.isel.cn.iplookup.error.InstanceGroupNotFoundError;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * This class implements a Google Cloud Function that retrieves the IP addresses of instances in a given instance group.
  */
-public class IPLookupFunction implements HttpFunction {
+public class IPLookup implements HttpFunction {
     private static final String PROJECT_ID = "CN2425-T1-G06";
-    private static final String INSTANCE_GROUP = "";
-    private static final String REGION = "europe-";
-
 
     /**
      * This method validates the parameters from the HTTP request.
      *
      * @param request The HTTP request.
-     * @return Either an error or a pair of zone and group name.
+     * @return Either an pt.isel.cn.landmarks.iplookup.error or a pair of zone and group name.
      */
     Either<InvalidParameterError, Pair<String, String>> validateParameters(HttpRequest request) {
-        String zone = request.getParameter("zone");
-        String groupName = request.getParameter("groupName");
+        String zone = request.getFirstQueryParameter("zone").orElse(null);
+        String groupName = request.getFirstQueryParameter("groupName").orElse(null);
 
         if (zone == null || groupName == null) {
             return Either.left(new InvalidParameterError());
@@ -31,13 +37,13 @@ public class IPLookupFunction implements HttpFunction {
 
         return Either.right(new Pair<>(zone, groupName));
     }
-
+    
     /**
      * This method is called when the function is invoked.
      *
      * @param request The HTTP request.
      * @param response The HTTP response.
-     * @throws IOException If an I/O error occurs.
+     * @throws IOException If an I/O pt.isel.cn.landmarks.iplookup.error occurs.
      */
     @Override
     public void service(HttpRequest request, HttpResponse response) throws IOException {
@@ -48,19 +54,20 @@ public class IPLookupFunction implements HttpFunction {
             return;
         }
 
-        String zone = params.getRight().getFirst();
-        String groupName = params.getRight().getSecond();
+        String zone = params.getRight().first();
+        String groupName = params.getRight().second();
 
-        Either<IPLookupError, List<String>> result = listIpInstancesFromGroup(PROJECT_ID, fullZone, fullGroupName);
+        Either<IPLookupError, List<String>> result = listIpInstancesFromGroup(PROJECT_ID, zone, groupName);
 
         if (result.isLeft()) {
             response.setStatusCode(500);
             response.getWriter().write("Error: " + result.getLeft().getMessage());
         } else {
             response.setContentType("application/json");
-            response.getWriter().write(new Gson().toJson(result.getRight()));
+            response.getWriter().write(new Gson().toJson(new IPsPayload(result.getRight())));
         }
     }
+
     /**
      * This method lists all the IP addresses of instances in a given instance group.
      *
