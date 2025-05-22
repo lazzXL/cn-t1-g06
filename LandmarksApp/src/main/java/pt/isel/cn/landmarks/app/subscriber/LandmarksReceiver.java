@@ -1,13 +1,16 @@
+package pt.isel.cn.landmarks.app.subscriber;
+
 import com.google.cloud.pubsub.v1.AckReplyConsumer;
 import com.google.cloud.pubsub.v1.MessageReceiver;
 import com.google.pubsub.v1.PubsubMessage;
-import com.google.pubsub.v1.ProjectSubscriptionName;
-import com.google.api.gax.core.ExecutorProvider;
-import com.google.api.gax.core.InstantiatingExecutorProvider;
-import com.google.cloud.pubsub.v1.Subscriber;
 
-
-
+/**
+ * LandmarksReceiver is a class that implements the MessageReceiver interface to handle
+ * messages received from a Google Cloud Pub/Sub subscription.
+ * <p>
+ * It processes the message by extracting relevant attributes and passing them to a LandmarksProcessor
+ * for further processing.
+ */
 public class LandmarksReceiver implements MessageReceiver {
     private LandmarksProcessor landmarksProcessor;
 
