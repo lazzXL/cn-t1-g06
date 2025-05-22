@@ -31,7 +31,7 @@ public class IPLookupFunction implements HttpFunction {
 
         return Either.right(new Pair<>(zone, groupName));
     }
-    
+
     /**
      * This method is called when the function is invoked.
      *
