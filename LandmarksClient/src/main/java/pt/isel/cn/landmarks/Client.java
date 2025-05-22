@@ -1,32 +1,56 @@
 package pt.isel.cn.landmarks;
 
+import com.google.gson.Gson;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.stub.StreamObserver;
 import landmarks.*;
+import pt.isel.cn.landmarks.domain.Either;
+import pt.isel.cn.landmarks.error.NoValidIPs;
 import java.io.File;
 import java.io.FileInputStream;
-import java.util.*;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Scanner;
+import java.util.UUID;
 
 
 
 public class Client {
-    private static String svcIP = "localhost";
+    private static String svcIP = null;
     private static int svcPort = 8000;
-    private static List<String> lookupIPs = new ArrayList<>(List.of("localhost"));
+    private static List<String> lookupIPs = new ArrayList<>(List.of());
     private static ManagedChannel channel;
     private static LandmarksServiceGrpc.LandmarksServiceBlockingStub blockingStub;
     private static LandmarksServiceGrpc.LandmarksServiceStub noBlockStub;
 
+    private static final String groupName = "landmarks-instance-group";
+    private static final String zone = "europe-west1-b";
+    private static final String ipLookupURL = "https://europe-west1-cn2425-t1-g06.cloudfunctions.net/funcIPLookup";
+
     public static void main(String[] args) {
         try {
-            svcIP = getNewIP("");
-            System.out.println("Connecting to " + svcIP + ":" + svcPort);
+            do {
+                Either<NoValidIPs, String> newIP = getNewIP();
+                if(newIP.isRight()) {
+                    break;
+                } else {
+                    System.out.println("No valid IPs found, retrying...");
+                    //Timeout 1 second
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        System.out.println("Error during sleep: " + e.getMessage());
+                    }
+                }
+            } while (true);
 
+            System.out.println("Connecting to " + svcIP + ":" + svcPort);
             channel = ManagedChannelBuilder.forAddress(svcIP, svcPort)
                     .usePlaintext()
                     .build();
-
             blockingStub = LandmarksServiceGrpc.newBlockingStub(channel);
             noBlockStub = LandmarksServiceGrpc.newStub(channel);
 
@@ -106,9 +130,9 @@ public class Client {
 
             List<Landmark> landmarks = results.getLandmarksList();
             if (landmarks.isEmpty()) {
-                System.out.println("No monuments identified.");
+                System.out.println("No landmarks identified.");
             } else {
-                System.out.println("Monuments identified:");
+                System.out.println("Landmarks identified:");
                 for (Landmark lm : landmarks) {
                     System.out.printf("- %s (%.6f, %.6f) Confidence: %.2f\n",
                             lm.getName(), lm.getLatitude(), lm.getLongitude(), lm.getConfidence());
@@ -144,7 +168,7 @@ public class Client {
             } else {
                 System.out.println("Photos found:");
                 for (Photo p : photos) {
-                    System.out.printf("- %s: %s (confiança: %.2f)\n",
+                    System.out.printf("- %s: %s (confidence: %.2f)\n",
                             p.getPhotoName(), p.getLandmarkName(), p.getConfidence());
                 }
             }
@@ -155,15 +179,50 @@ public class Client {
     }
 
 
-    private static String getNewIP(String prevIP) {
-        lookupIPs.remove(prevIP);
-        if (lookupIPs.isEmpty()) {
-            // TODO: Call IPLookup
+    private static Either<NoValidIPs, String> getNewIP() {
+        if(svcIP != null && !lookupIPs.isEmpty()) {
+            // Get new IP from the list
+            String ip = lookupIPs.remove(0);
+            return Either.right(ip);
+        } else {
+            // Obtain new IPs from the service
+            try {
+                String urlStr = ipLookupURL + "?zone=" + zone + "&groupName=" + groupName;
+                URL url = new URL(urlStr);
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("GET");
+                conn.setConnectTimeout(2000); // 2s timeout
+                conn.setReadTimeout(2000);
+
+                int responseCode = conn.getResponseCode();
+                if (responseCode != 200) {
+                    return Either.left(new NoValidIPs());
+                }
+
+                try (Scanner scanner = new Scanner(conn.getInputStream())) {
+                    StringBuilder jsonBuilder = new StringBuilder();
+                    while (scanner.hasNextLine()) {
+                        jsonBuilder.append(scanner.nextLine());
+                    }
+
+                    String json = jsonBuilder.toString();
+                    Gson gson = new Gson();
+                    lookupIPs = gson.fromJson(json, List.class);
+
+                    if (lookupIPs != null && !lookupIPs.isEmpty()) {
+                        String ip = lookupIPs.remove(0); // use the first valid IP
+                        return Either.right(ip);
+                    }
+
+                    return Either.left(new NoValidIPs());
+                }
+            } catch (Exception e) {
+                System.out.println("Error obtaining IP: " + e.getMessage());
+                return Either.left(new NoValidIPs());
+            }
         }
-        Random random = new Random();
-        int randomIndex = random.nextInt(lookupIPs.size());
-        return lookupIPs.get(randomIndex);
     }
+
 
     private static int menu(Scanner scanner) {
         int op;
