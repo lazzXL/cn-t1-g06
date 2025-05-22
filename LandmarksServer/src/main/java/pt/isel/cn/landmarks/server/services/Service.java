@@ -1,15 +1,15 @@
 package pt.isel.cn.landmarks.server.services;
 
+import com.google.cloud.WriteChannel;
 import pt.isel.cn.landmarks.domain.AnalysisMetadata;
 import pt.isel.cn.landmarks.domain.Config;
 import pt.isel.cn.landmarks.domain.Either;
 import pt.isel.cn.landmarks.domain.Status;
-import pt.isel.cn.landmarks.server.error.LookupError;
 import pt.isel.cn.landmarks.server.error.LookupErrorType;
 import pt.isel.cn.landmarks.server.error.PhotoSubmitError;
 import pt.isel.cn.landmarks.server.error.PhotosByConfidenceError;
 import pt.isel.cn.landmarks.server.publisher.LandmarksPublisher;
-import pt.isel.cn.landmarks.storage.cloud.CloudStorage;
+import pt.isel.cn.landmarks.storage.blob.BlobStorage;
 import pt.isel.cn.landmarks.storage.metadata.MetadataStorage;
 
 import java.util.ArrayList;
@@ -19,7 +19,7 @@ import java.util.UUID;
 import java.util.logging.Logger;
 
 public class Service {
-    private final CloudStorage cloudStorage;
+    private final BlobStorage blobStorage;
     private final MetadataStorage metadataStorage;
     private final LandmarksPublisher landmarksPublisher;
 
@@ -27,8 +27,8 @@ public class Service {
 
     private static final Logger logger = Logger.getLogger(Service.class.getName());
 
-    public Service(CloudStorage cloudStorage, MetadataStorage metadataStorage, LandmarksPublisher landmarksPublisher) {
-        this.cloudStorage = cloudStorage;
+    public Service(BlobStorage cloudStorage, MetadataStorage metadataStorage, LandmarksPublisher landmarksPublisher) {
+        this.blobStorage = cloudStorage;
         this.metadataStorage = metadataStorage;
         this.landmarksPublisher = landmarksPublisher;
     }
@@ -36,28 +36,63 @@ public class Service {
     /**
      * Submits a photo to the cloud if it doesn't already exist
      * and makes an analysis request.
-     * <p>
-     * The photo itself is only stored once in the blob storage. However,
-     * there can be multiple analysis requests for the same photo,
-     * each having its results metadata stored in the metadata storage.
      *
      * @param photoId The ID of the photo to submit.
      * @param photoName The name of the photo.
-     * @param photoBytes The byte array of the photo.
      * @return Either a PhotoSubmitError or null if successful.
      */
-    public Either<PhotoSubmitError, String> submitPhoto(String photoId, String photoName, byte[] photoBytes) {
+    public Either<PhotoSubmitError, String> submitRequest(String photoId, String photoName) {
         String requestId = UUID.randomUUID().toString();
         try {
-            if (!cloudStorage.blobExists(PHOTOS_BUCKET, photoId)) {
-                cloudStorage.upload(PHOTOS_BUCKET, photoId, "image/png", photoBytes);
-                cloudStorage.makePublic(PHOTOS_BUCKET, photoId);
-            }
             landmarksPublisher.publish(requestId, photoId, photoName);
             return Either.right(requestId);
         } catch (Exception e) {
             logger.severe("Error submitting photo: " + e.getMessage());
             return Either.left(new PhotoSubmitError());
+        }
+    }
+
+    /**
+     * Checks if a photo already exists in the cloud storage.
+     *
+     * @param photoId The ID of the photo to check.
+     * @return Either a PhotoSubmitError or null if successful.
+     */
+    public boolean photoExists(String photoId) {
+        try {
+            return blobStorage.blobExists(PHOTOS_BUCKET, photoId);
+        } catch (Exception e) {
+            logger.severe("Error checking if photo exists: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Deletes a photo from the cloud storage.
+     *
+     * @param photoId The ID of the photo to delete.
+     */
+    public void deletePhoto(String photoId) {
+        try {
+            blobStorage.delete(PHOTOS_BUCKET, photoId);
+        } catch (Exception e) {
+            logger.severe("Error deleting photo: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Gets a write channel for a photo.
+     *
+     * @param photoId The ID of the photo.
+     *
+     * @return Either a PhotoSubmitError or null if successful.
+     */
+    public WriteChannel getPhotoWriter(String photoId) {
+        try {
+            return blobStorage.getWriteChannel(PHOTOS_BUCKET, photoId, "image/png");
+        } catch (Exception e) {
+            logger.severe("Error getting write channel: " + e.getMessage());
+            return null;
         }
     }
 

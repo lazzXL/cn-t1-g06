@@ -1,4 +1,4 @@
-package pt.isel.cn.landmarks.error;
+package pt.isel.cn.landmarks.client.error;
 
 public class NoValidIPs extends ClientError {
     public NoValidIPs() {

@@ -1,5 +1,7 @@
 package pt.isel.cn.landmarks.domain;
 
+import java.util.List;
+
 /**
  * This class represents the metadata of the result
  * of a landmark photo analysis.
@@ -13,5 +15,5 @@ public record AnalysisMetadata(
     String photoId,
     String photoName,
     Status status,
-    LandmarkMetadata[] landmarks
+    List<LandmarkMetadata> landmarks
 ) {}

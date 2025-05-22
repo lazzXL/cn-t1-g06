@@ -14,8 +14,15 @@ service LandmarksService {
 }
 
 message SubmitPhotoRequest {
-  string photo_name = 1;
-  bytes photo = 2;
+  oneof payload {
+    bytes photo_chunk = 1;
+    ImageMetadata metadata = 2;
+  }
+}
+
+message ImageMetadata {
+  string name = 1;
+  string hash = 2;
 }
 
 message SubmitIdentifier {

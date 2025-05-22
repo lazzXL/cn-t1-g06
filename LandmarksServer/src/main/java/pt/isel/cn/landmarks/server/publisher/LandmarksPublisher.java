@@ -26,7 +26,7 @@ public class LandmarksPublisher {
                     .putAttributes("photoId", photoId)
                     .putAttributes("photoName", photoName)
                     .putAttributes("blobName", photoId)
-                    .putAttributes("bucket", Config.PHOTOS_BUCKET)
+                    .putAttributes("bucketName", Config.PHOTOS_BUCKET)
                     .build();
 
             ApiFuture<String> future = publisher.publish(message);

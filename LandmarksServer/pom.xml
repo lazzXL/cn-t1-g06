@@ -52,7 +52,7 @@
                     </descriptors>
                     <archive>
                         <manifest>
-                            <mainClass>LandmarksApp.Client</mainClass>
+                            <mainClass>pt.isel.cn.landmarks.server.Main</mainClass>
                         </manifest>
                     </archive>
                 </configuration>

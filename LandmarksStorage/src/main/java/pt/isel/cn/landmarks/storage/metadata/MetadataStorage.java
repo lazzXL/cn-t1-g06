@@ -4,6 +4,8 @@ import pt.isel.cn.landmarks.domain.AnalysisMetadata;
 import pt.isel.cn.landmarks.domain.LandmarkMetadata;
 import pt.isel.cn.landmarks.domain.Status;
 
+import java.util.List;
+
 /**
  * This interface defines the contract metadata storage.
  * <p>
@@ -25,7 +27,7 @@ public interface MetadataStorage {
      * @param landmarks An array of LandmarkMetadata objects representing the detected landmarks.
      * @param status The status of the analysis.
      */
-    public void updateAnalysisMetadata(String requestId, LandmarkMetadata[] landmarks, Status status);
+    public void updateAnalysisMetadata(String requestId, List<LandmarkMetadata> landmarks, Status status);
 
     /**
      * Retrieves the analysis metadata by photo ID.

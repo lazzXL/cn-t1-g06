@@ -65,6 +65,21 @@ public class GoogleCloudStorage implements BlobStorage {
     }
 
     @Override
+    public void delete(String bucketName, String blobName) {
+        BlobId blobId = BlobId.of(bucketName, blobName);
+        Blob blob = storage.get(blobId);
+
+        if (blob == null) {
+            throw new IllegalArgumentException("Blob not found: " + blobName);
+        }
+
+        boolean deleted = storage.delete(blobId);
+        if (!deleted) {
+            throw new RuntimeException("Failed to delete blob: " + blobName);
+        }
+    }
+
+    @Override
     public void makePublic(String bucketName, String blobName) {
         BlobId blobId = BlobId.of(bucketName, blobName);
         Blob blob = storage.get(blobId);
@@ -87,5 +102,15 @@ public class GoogleCloudStorage implements BlobStorage {
         BlobId blobId = BlobId.of(bucketName, blobName);
         Blob blob = storage.get(blobId);
         return blob != null;
+    }
+
+    @Override
+    public WriteChannel getWriteChannel(String bucketName, String blobName, String contentType) {
+        BlobId blobId = BlobId.of(bucketName, blobName);
+        BlobInfo blobInfo = BlobInfo
+                .newBuilder(blobId)
+                .setContentType(contentType)
+                .build();
+        return storage.writer(blobInfo);
     }
 }

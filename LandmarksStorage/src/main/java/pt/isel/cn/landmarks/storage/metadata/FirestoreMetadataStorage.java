@@ -1,10 +1,12 @@
 package pt.isel.cn.landmarks.storage.metadata;
 
 import com.google.cloud.firestore.Firestore;
+import com.google.cloud.firestore.WriteBatch;
 import pt.isel.cn.landmarks.domain.AnalysisMetadata;
 import pt.isel.cn.landmarks.domain.Config;
 import pt.isel.cn.landmarks.domain.LandmarkMetadata;
 import pt.isel.cn.landmarks.domain.Status;
+import java.util.List;
 
 public class FirestoreMetadataStorage implements MetadataStorage {
     private final Firestore firestore;
@@ -15,30 +17,89 @@ public class FirestoreMetadataStorage implements MetadataStorage {
 
     @Override
     public void saveAnalysisMetadata(String requestId, AnalysisMetadata metadata) {
-        firestore.collection(Config.METADATA_COLLECTION)
-                .document(requestId)
-                .set(metadata);
+        WriteBatch batch = firestore.batch();
+
+        batch.set(
+                firestore.collection(Config.METADATA_COLLECTION)
+                        .document(requestId),
+                new AnalysisMetadataDTO(
+                        metadata.photoId(),
+                        metadata.photoName(),
+                        metadata.status()
+                )
+        );
+
+        if (metadata.landmarks() != null) {
+            for (int i = 0; i < metadata.landmarks().size(); i++) {
+                LandmarkMetadata landmark = metadata.landmarks().get(i);
+                batch.set(
+                        firestore.collection(Config.METADATA_COLLECTION)
+                                .document(requestId)
+                                .collection("landmarks")
+                                .document(requestId + "_" + i),
+                        landmark
+                );
+            }
+        }
+
+        batch.commit();
     }
 
     @Override
-    public void updateAnalysisMetadata(String requestId, LandmarkMetadata[] landmarks, Status status) {
-        firestore.collection(Config.METADATA_COLLECTION)
-                .document(requestId)
-                .update("landmarks", landmarks, "status", status);
+    public void updateAnalysisMetadata(String requestId, List<LandmarkMetadata> landmarks, Status status) {
+        WriteBatch batch = firestore.batch();
+
+        batch.update(
+                firestore.collection(Config.METADATA_COLLECTION)
+                        .document(requestId),
+                "status", status
+        );
+
+        if (landmarks != null) {
+            for (int i = 0; i < landmarks.size(); i++) {
+                LandmarkMetadata landmark = landmarks.get(i);
+                batch.set(
+                        firestore.collection(Config.METADATA_COLLECTION)
+                                .document(requestId)
+                                .collection("landmarks")
+                                .document(requestId + "_" + i),
+                        landmark
+                );
+            }
+        }
+
+        batch.commit();
     }
 
     @Override
     public AnalysisMetadata getAnalysisMetadata(String requestId) {
         try {
-            return firestore.collection(Config.METADATA_COLLECTION)
-                    .whereEqualTo("requestId", requestId)
+            AnalysisMetadataDTO metadata = firestore.collection(Config.METADATA_COLLECTION)
+                    .document(requestId)
+                    .get()
+                    .get()
+                    .toObject(AnalysisMetadataDTO.class);
+
+            List<LandmarkMetadata> landmarks = firestore.collection(Config.METADATA_COLLECTION)
+                    .document(requestId)
+                    .collection("landmarks")
                     .get()
                     .get()
                     .getDocuments()
                     .stream()
-                    .findFirst()
-                    .map(doc -> doc.toObject(AnalysisMetadata.class))
-                    .orElse(null);
+                    .map(doc -> doc.toObject(LandmarkMetadata.class))
+                    .toList();
+
+            if (metadata == null) {
+                return null;
+            }
+
+            return new AnalysisMetadata(
+                    metadata.photoId(),
+                    metadata.photoName(),
+                    metadata.status(),
+                    landmarks
+            );
         } catch (Exception e) {
             e.printStackTrace();
             return null;
@@ -48,13 +109,19 @@ public class FirestoreMetadataStorage implements MetadataStorage {
     @Override
     public AnalysisMetadata[] getAnalysisMetadataByConfidenceThreshold(double confidenceThreshold) {
         try {
-            return firestore.collection(Config.METADATA_COLLECTION)
-                    .whereGreaterThan("landmarks.confidence", confidenceThreshold)
+            var landmarkDocs = firestore.collectionGroup("landmarks")
+                    .whereGreaterThan("confidence", confidenceThreshold)
                     .get()
                     .get()
-                    .getDocuments()
-                    .stream()
-                    .map(doc -> doc.toObject(AnalysisMetadata.class))
+                    .getDocuments();
+
+            var requestIds = landmarkDocs.stream()
+                    .map(doc -> doc.getReference().getParent().getParent().getId())
+                    .distinct()
+                    .toList();
+
+            return requestIds.stream()
+                    .map(this::getAnalysisMetadata)
                     .toArray(AnalysisMetadata[]::new);
         } catch (Exception e) {
             e.printStackTrace();

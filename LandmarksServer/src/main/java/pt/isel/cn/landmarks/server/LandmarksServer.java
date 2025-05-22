@@ -37,7 +37,7 @@ public class LandmarksServer extends LandmarksServiceGrpc.LandmarksServiceImplBa
 
     @Override
     public void lookupResults(SubmitIdentifier request, StreamObserver<LookupResults> responseObserver) {
-        String requestId = request.getIdentifier();
+        String requestId = request.getIdentifier().trim();
         logger.info("Looking up results for " + requestId);
 
         Either<LookupErrorType, AnalysisMetadata> result = service.lookupResults(requestId);
@@ -55,22 +55,22 @@ public class LandmarksServer extends LandmarksServiceGrpc.LandmarksServiceImplBa
         }
 
         AnalysisMetadata metadata = result.getRight();
-        LandmarkMetadata[] landmarks = metadata.landmarks();
+        List<LandmarkMetadata> landmarks = metadata.landmarks();
 
-        if (landmarks.length == 0) {
+        if (landmarks.isEmpty()) {
             responseObserver.onNext(LookupResults.newBuilder().build());
             responseObserver.onCompleted();
             return;
         }
 
-        LandmarkMetadata highestConfidenceLandmark = Arrays.stream(landmarks)
+        LandmarkMetadata highestConfidenceLandmark = landmarks.stream()
                 .max(Comparator.comparingDouble(LandmarkMetadata::confidence))
                 .orElseThrow();
 
         Either<MapsError, byte[]> mapResult = mapsService.getMap(highestConfidenceLandmark.location());
 
         LookupResults.Builder responseBuilder = LookupResults.newBuilder()
-                .addAllLandmarks(Arrays.stream(landmarks)
+                .addAllLandmarks(landmarks.stream()
                         .map(landmark -> Landmark.newBuilder()
                                 .setName(landmark.name())
                                 .setConfidence(landmark.confidence())
@@ -107,8 +107,15 @@ public class LandmarksServer extends LandmarksServiceGrpc.LandmarksServiceImplBa
 
         List<AnalysisMetadata> metadataList = result.getRight();
 
+        if (metadataList.isEmpty()) {
+            responseObserver.onNext(GetPhotosResponse.newBuilder().build());
+            responseObserver.onCompleted();
+            return;
+        }
+
         LandmarkMetadata highestConfidenceLandmark = metadataList.stream()
-                .flatMap(metadata -> Arrays.stream(metadata.landmarks()))
+                .flatMap(metadata -> metadata.landmarks().stream())
+                .filter(landmark -> landmark.confidence() >= confidenceThreshold)
                 .max(Comparator.comparingDouble(LandmarkMetadata::confidence))
                 .orElseThrow();
 

@@ -9,11 +9,9 @@ package pt.isel.cn.landmarks.domain;
  * @param name The name of the landmark.
  * @param location The location of the landmark.    
  * @param confidence The confidence level of the landmark detection.
- * @param map A snapshot of the map at the landmark location.
  */
 public record Landmark(
         String name,
         Location location,
-        double confidence,
-        byte[] map
+        double confidence
 ) {}

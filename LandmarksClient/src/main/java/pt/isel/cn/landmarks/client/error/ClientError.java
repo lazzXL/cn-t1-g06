@@ -1,7 +1,7 @@
-package pt.isel.cn.landmarks.error;
+package pt.isel.cn.landmarks.client.error;
 
 public class ClientError {
-    private String message;
+    private final String message;
     public ClientError(String message) {
         this.message = message;
     }

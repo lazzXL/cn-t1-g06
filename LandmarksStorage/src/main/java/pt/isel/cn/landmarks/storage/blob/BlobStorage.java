@@ -1,5 +1,7 @@
 package pt.isel.cn.landmarks.storage.blob;
 
+import com.google.cloud.WriteChannel;
+
 /**
  * This interface represents a BLOB storage system.
  * <p>
@@ -32,6 +34,14 @@ public interface BlobStorage {
     public byte[] download(String bucketName, String blobName);
 
     /**
+     * Deletes a file from the cloud storage.
+     *
+     * @param bucketName The name of the bucket where the file is stored.
+     * @param blobName The unique identifier for the file.
+     */
+    public void delete(String bucketName, String blobName);
+
+    /**
      * Makes a file public in the cloud storage.
      * <p>
      * @param bucketName The name of the bucket where the file is stored.
@@ -56,4 +66,15 @@ public interface BlobStorage {
      * @return True if the blob exists, false otherwise.
      */
     public boolean blobExists(String bucketName, String blobName);
+
+    /**
+     * Gets a write channel for a blob in the cloud storage.
+     *
+     * @param bucketName - The name of the bucket where the file is stored.
+     * @param blobName - The unique identifier for the file.
+     * @param contentType - The content type for the file (e.g., "image/png").
+     *
+     * @return The write channel for the blob.
+     */
+    WriteChannel getWriteChannel(String bucketName, String blobName, String contentType);
 }
