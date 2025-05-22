@@ -22,7 +22,7 @@ public class LandmarksPublisher {
             Publisher publisher = Publisher.newBuilder(topicName).build();
 
             PubsubMessage message = PubsubMessage.newBuilder()
-                    .setMessageId(requestId)
+                    .putAttributes("requestId", requestId)
                     .putAttributes("photoId", photoId)
                     .putAttributes("photoName", photoName)
                     .putAttributes("blobName", photoId)

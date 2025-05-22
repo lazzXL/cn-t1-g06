@@ -9,16 +9,16 @@ public final class LookupError extends Error {
         super(getMessageFor(type));
     }
 
-    private static String getMessageFor(LookupErrorType type) {
+    public static String getMessageFor(LookupErrorType type) {
         return switch (type) {
-            case NOT_FOUND -> "Could not find photo";
-            case PENDING -> "Photo is still being processed";
-            case FAILED -> "Photo processing failed";
-            default -> "Could not find results for photo";
+            case NOT_FOUND -> "Could not find request with that ID";
+            case PENDING -> "Request is still being processed";
+            case FAILED -> "Request failed";
+            default -> "Could not find results for request with that ID";
         };
     }
 
-    private static LookupErrorType getTypeFor(AnalysisMetadata metadata) {
+    public static LookupErrorType getTypeFor(AnalysisMetadata metadata) {
         if (metadata == null) return LookupErrorType.NOT_FOUND;
         return switch (metadata.status()) {
             case Status.IN_PROGRESS -> LookupErrorType.PENDING;

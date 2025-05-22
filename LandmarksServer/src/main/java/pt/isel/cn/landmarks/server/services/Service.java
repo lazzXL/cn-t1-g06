@@ -32,6 +32,7 @@ public class Service {
         this.metadataStorage = metadataStorage;
         this.landmarksPublisher = landmarksPublisher;
     }
+
     /**
      * Submits a photo to the cloud if it doesn't already exist
      * and makes an analysis request.
@@ -66,26 +67,26 @@ public class Service {
      * @param requestId The ID of the request.
      * @return Either a LookupError or the AnalysisMetadata if successful.
      */
-    public Either<LookupError, AnalysisMetadata> lookupResults(String requestId) {
+    public Either<LookupErrorType, AnalysisMetadata> lookupResults(String requestId) {
         try {
             AnalysisMetadata analysisMetadata = metadataStorage.getAnalysisMetadata(requestId);
 
             if (analysisMetadata == null) {
-                return Either.left(new LookupError(LookupErrorType.NOT_FOUND));
+                return Either.left(LookupErrorType.NOT_FOUND);
             }
 
             if (analysisMetadata.status() == Status.IN_PROGRESS) {
-                return Either.left(new LookupError(LookupErrorType.PENDING));
+                return Either.left(LookupErrorType.PENDING);
             }
 
             if (analysisMetadata.status() == Status.FAILURE) {
-                return Either.left(new LookupError(LookupErrorType.FAILED));
+                return Either.left(LookupErrorType.FAILED);
             }
 
             return Either.right(analysisMetadata);
         } catch (Exception e) {
             logger.severe("Error looking up photo: " + e.getMessage());
-            return Either.left(new LookupError(LookupErrorType.UNKNOWN));
+            return Either.left(LookupErrorType.UNKNOWN);
         }
     }
 

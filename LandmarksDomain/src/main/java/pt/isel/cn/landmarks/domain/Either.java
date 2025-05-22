@@ -1,5 +1,7 @@
 package pt.isel.cn.landmarks.domain;
 
+import java.util.function.Consumer;
+
 public class Either <L, R> {
     private final L left;
     private final R right;
@@ -25,6 +27,18 @@ public class Either <L, R> {
 
     public boolean isRight() {
         return !isLeft;
+    }
+
+    public void ifLeft(Consumer<? super L> consumer) {
+        if (isLeft) {
+            consumer.accept(left);
+        }
+    }
+
+    public void ifRight(Consumer<? super R> consumer) {
+        if (!isLeft) {
+            consumer.accept(right);
+        }
     }
 
     public L getLeft() {
