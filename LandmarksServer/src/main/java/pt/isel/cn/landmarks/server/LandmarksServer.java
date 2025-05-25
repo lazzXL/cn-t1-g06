@@ -14,8 +14,6 @@ import pt.isel.cn.landmarks.server.error.PhotosByConfidenceError;
 import pt.isel.cn.landmarks.server.observers.PhotoSubmitStreamObserver;
 import pt.isel.cn.landmarks.server.services.MapsService;
 import pt.isel.cn.landmarks.server.services.Service;
-
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.logging.Logger;

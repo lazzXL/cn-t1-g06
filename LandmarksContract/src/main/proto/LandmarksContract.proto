@@ -1,5 +1,4 @@
 syntax = "proto3";
-import "google/protobuf/empty.proto";
 
 option java_multiple_files = true;
 option java_package = "landmarks";
@@ -7,7 +6,6 @@ option java_package = "landmarks";
 package landmarks;
 
 service LandmarksService {
-  // Submits a photo for landmark detection. Sent in blocks by the client, stored by the server in cloud storage.
   rpc submitPhoto(stream SubmitPhotoRequest) returns (SubmitIdentifier) {}
   rpc lookupResults(SubmitIdentifier) returns (LookupResults)  {}
   rpc getPhotos(ConfidenceThreshold) returns (GetPhotosResponse) {}

@@ -26,6 +26,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.Scanner;
+import java.util.concurrent.CountDownLatch;
 
 public class Client {
     private static ManagedChannel channel;
@@ -170,7 +171,7 @@ public class Client {
                     .uri(URI.create(IP_LOOKUP_URL))
                     .GET()
                     .build();
-            HttpResponse<String> httpResponse = httpClient.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> httpResponse = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (httpResponse.statusCode() != HttpResponseStatus.OK.code()) {
                 return Either.left(new NoValidIPs());
@@ -196,6 +197,7 @@ public class Client {
 
         while (!connected) {
             Either<NoValidIPs, String> ipResult = getNewIP();
+
             if (ipResult.isLeft()) {
                 System.out.println("No valid IPs available. Retrying...");
                 try {
@@ -213,19 +215,13 @@ public class Client {
             ConnectivityState state = channel.getState(true);
 
             while (state != ConnectivityState.READY) {
-                final Object lock = new Object();
-                synchronized (lock) {
-                    channel.notifyWhenStateChanged(state, () -> {
-                        synchronized (lock) {
-                            lock.notify();
-                        }
-                    });
-                    try {
-                        lock.wait();
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        break;
-                    }
+                final CountDownLatch latch = new CountDownLatch(1);
+                channel.notifyWhenStateChanged(state, latch::countDown);
+                try {
+                    latch.await();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
                 }
                 state = channel.getState(true);
             }

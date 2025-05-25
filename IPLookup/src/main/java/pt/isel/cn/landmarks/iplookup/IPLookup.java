@@ -25,7 +25,7 @@ public class IPLookup implements HttpFunction {
      * This method validates the parameters from the HTTP request.
      *
      * @param request The HTTP request.
-     * @return Either an pt.isel.cn.landmarks.iplookup.error or a pair of zone and group name.
+     * @return Either a InvalidParameterError or a pair of zone and group name.
      */
     Either<InvalidParameterError, Pair<String, String>> validateParameters(HttpRequest request) {
         String zone = request.getFirstQueryParameter("zone").orElse(null);

@@ -12,7 +12,7 @@ import com.google.pubsub.v1.PubsubMessage;
  * for further processing.
  */
 public class LandmarksReceiver implements MessageReceiver {
-    private LandmarksProcessor landmarksProcessor;
+    private final LandmarksProcessor landmarksProcessor;
 
     public LandmarksReceiver(LandmarksProcessor landmarksProcessor) {
         this.landmarksProcessor = landmarksProcessor;
