@@ -1,6 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="Encoding">
+    <file url="file://$PROJECT_DIR$/IPLookup/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/IPLookup/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/InstanceManager/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/InstanceManager/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/LandmarksApp/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/LandmarksApp/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/LandmarksClient/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/LandmarksClient/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/LandmarksContract/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/LandmarksContract/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/LandmarksDomain/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/LandmarksDomain/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/LandmarksServer/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/LandmarksServer/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/LandmarksStorage/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/LandmarksStorage/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/src/main/resources" charset="UTF-8" />
   </component>
