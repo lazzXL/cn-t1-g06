@@ -169,5 +169,48 @@
 % %% section how_to_write_using_latex (end)
 % 
 
-\chapter{Arquitetura da Aplicação} 
+\chapter{Arquitetura da Aplicação}
 \label{sec:application_architecture}
+
+A aplicação CN2425TF foi desenvolvida com o objetivo de processar imagens
+submetidas pelos utilizadores, identificando monumentos ou locais de interesse
+presentes nas mesmas, através da utilização da \textit{Vision API} da Google
+Cloud. Após a deteção, a aplicação permite ainda a obtenção de uma imagem de
+mapa correspondente à localização geográfica identificada. Para garantir
+escalabilidade, desempenho e tolerância a falhas, a arquitetura do sistema
+baseia-se em diversos serviços da Google Cloud Platform (GCP), interligados de
+forma eficiente.
+
+\begin{figure}[htbp]
+	\centering
+	\includegraphics[width=\textwidth]{application-structure.png}
+	\caption{Componentes da Aplicação e as suas interações.}
+	\label{fig:application_structure}
+\end{figure}
+
+A aplicação é composta por vários componentes que interagem entre si de forma
+coordenada. A Figura~\ref{fig:application_structure} ilustra a arquitetura
+geral da aplicação, destacando o papel de cada componente na execução das
+funcionalidades pretendidas.
+
+\section{Componentes Principais}
+
+\begin{itemize}
+
+	\item \textbf{Gestor de Instâncias:} Componente responsável pelo controlo e monitorização dos grupos de instâncias que executam o servidor gRPC e os workers da aplicação. Garante a escalabilidade horizontal da aplicação, ajustando o número de instâncias em função da carga, e assegura que as instâncias estão operacionais.
+
+	\item \textbf{Servidor gRPC:} Constitui o ponto de entrada da aplicação para os pedidos efetuados pelos clientes. É responsável por receber, processar e responder às requisições, executando a lógica de negócio definida. Os ficheiros de imagem submetidos são armazenados no serviço Cloud Storage, enquanto os dados resultantes da sua análise são registados no Firestore. O servidor comunica com o serviço Pub/Sub para iniciar o processamento assíncrono das imagens, garantindo escalabilidade e eficiência. Adicionalmente, interage com a \textit{Static Maps API} para obter imagens de mapas correspondentes às localizações geográficas dos monumentos identificados, permitindo assim ao cliente visualizar o contexto espacial dos resultados obtidos.
+
+	\item \textbf{Cliente gRPC:} Interface utilizada pelos utilizadores finais para interagir com o sistema. Permite submeter imagens para análise, consultar resultados e obter mapas. Comunica com o servidor gRPC e utiliza a função IPLookup para determinar os endereços IP disponíveis.
+
+	\item \textbf{Serviço Pub/Sub:} Responsável por garantir uma comunicação eficiente e desacoplada entre o servidor e os componentes que processam as imagens. Ao receber uma mensagem com os detalhes da imagem submetida, esta é processada por um worker (Landmarks App) que interage com a \textit{Vision API} para identificar os monumentos e respetiva localização geográfica.
+
+	\item \textbf{Função Cloud IPLookup:} Função implementada como uma Cloud Function que tem como objetivo fornecer, ao cliente gRPC, a lista atualizada de endereços IP das instâncias do servidor disponíveis. Esta lista permite ao cliente estabelecer ligação ao servidor, mesmo em cenários de falha ou alteração dinâmica das instâncias.
+
+\end{itemize}
+
+Esta arquitetura modular e baseada em serviços da Google Cloud Platform permite
+garantir um elevado grau de desempenho, escalabilidade e tolerância a falhas.
+Na secção seguinte será descrito o contrato utilizado entre o servidor gRPC e o
+cliente, bem como o fluxo de operações do sistema, ilustrando como os
+componentes interagem durante o ciclo de vida de uma submissão.
