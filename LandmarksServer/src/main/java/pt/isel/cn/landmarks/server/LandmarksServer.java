@@ -111,24 +111,27 @@ public class LandmarksServer extends LandmarksServiceGrpc.LandmarksServiceImplBa
             return;
         }
 
-        LandmarkMetadata highestConfidenceLandmark = metadataList.stream()
-                .flatMap(metadata -> metadata.landmarks().stream())
-                .filter(landmark -> landmark.confidence() >= confidenceThreshold)
-                .max(Comparator.comparingDouble(LandmarkMetadata::confidence))
-                .orElseThrow();
-
         responseObserver.onNext(
                 GetPhotosResponse.newBuilder()
                         .addAllPhotos(metadataList.stream()
-                                .map(metadata -> Photo.newBuilder()
-                                        .setPhotoName(metadata.photoName())
-                                        .setLandmarkName(highestConfidenceLandmark.name())
-                                        .setConfidence(highestConfidenceLandmark.confidence())
-                                        .build())
+                                .map(metadata -> {
+                                    LandmarkMetadata highestLandmark = getHighestConfidenceLandmark(metadata.landmarks());
+                                    return Photo.newBuilder()
+                                            .setPhotoName(metadata.photoName())
+                                            .setLandmarkName(highestLandmark.name())
+                                            .setConfidence(highestLandmark.confidence())
+                                            .build();
+                                })
                                 .toList())
                         .build()
         );
 
         responseObserver.onCompleted();
+    }
+
+    private LandmarkMetadata getHighestConfidenceLandmark(List<LandmarkMetadata> landmarks) {
+        return landmarks.stream()
+                .max(Comparator.comparingDouble(LandmarkMetadata::confidence))
+                .orElseThrow(() -> new IllegalStateException("No landmarks found"));
     }
 }

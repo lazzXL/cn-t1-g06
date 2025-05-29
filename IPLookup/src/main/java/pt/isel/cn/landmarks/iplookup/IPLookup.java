@@ -19,7 +19,7 @@ import java.util.List;
  * This class implements a Google Cloud Function that retrieves the IP addresses of instances in a given instance group.
  */
 public class IPLookup implements HttpFunction {
-    private static final String PROJECT_ID = "CN2425-T1-G06";
+    private static final String PROJECT_ID = "cn2425-t1-g06";
 
     /**
      * This method validates the parameters from the HTTP request.
@@ -60,7 +60,7 @@ public class IPLookup implements HttpFunction {
         Either<IPLookupError, List<String>> result = listIpInstancesFromGroup(PROJECT_ID, zone, groupName);
 
         if (result.isLeft()) {
-            response.setStatusCode(500);
+            response.setStatusCode(404);
             response.getWriter().write("Error: " + result.getLeft().getMessage());
         } else {
             response.setContentType("application/json");
@@ -82,15 +82,17 @@ public class IPLookup implements HttpFunction {
             for (Instance curInst : client.list(projectID, zone).iterateAll()) {
                 if (curInst.getName().contains(groupName)) {
                     String ip = curInst.getNetworkInterfaces(0).getAccessConfigs(0).getNatIP();
-                    ipList.add(ip);
+                    if (!ip.isBlank()) {
+                        ipList.add(ip);
+                    }
                 }
             }
             if (ipList.isEmpty()) {
                 return Either.left(new InstanceGroupNotFoundError());
             }
             return Either.right(ipList);
-        } catch (Exception e) {
-            return Either.left(new IPLookupError("Failed to retrieve instances: " + e.getMessage()));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 

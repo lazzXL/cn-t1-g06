@@ -35,13 +35,13 @@ public class Client {
 
     private static final Integer BLOCK_SIZE = 4096;
     private static final String GROUP_NAME = "instance-group-landmarks-server";
-    private static final String ZONE = "europe-west1-b";
+    private static final String ZONE = "europe-southwest1-a";
     private static final String IP_LOOKUP_URL = "https://europe-west1-cn2425-t1-g06.cloudfunctions.net/funcIPLookup?zone=" + ZONE + "&groupName=" + GROUP_NAME;
     private static final Integer SERVICE_PORT = 8000;
 
     public static void main(String[] args) {
         connectToService();
-        // channel = ManagedChannelBuilder.forAddress("localhost", SERVICE_PORT).usePlaintext().build();
+//        channel = ManagedChannelBuilder.forAddress("localhost", SERVICE_PORT).usePlaintext().build();
         blockingStub = LandmarksServiceGrpc.newBlockingStub(channel);
         noBlockStub = LandmarksServiceGrpc.newStub(channel);
 
