@@ -1,6 +1,5 @@
 package pt.isel.cn.landmarks.app;
 
-import pt.isel.cn.landmarks.domain.AnalysisMetadata;
 import pt.isel.cn.landmarks.domain.Landmark;
 import pt.isel.cn.landmarks.domain.LandmarkMetadata;
 import pt.isel.cn.landmarks.domain.Status;
@@ -35,22 +34,9 @@ public class LandmarksApp {
 
     public void run() {
         subscriber.subscribe((requestId, photoId, photoName, blobName, bucketName) -> {
-            saveInitialMetadata(requestId, photoId, photoName);
             String photoUrl = blobStorage.getPublicUrl(bucketName, blobName);
             processLandmarkDetection(requestId, photoUrl);
         });
-    }
-
-    private void saveInitialMetadata(String requestId, String photoId, String photoName) {
-        metadataStorage.saveAnalysisMetadata(
-                requestId,
-                new AnalysisMetadata(
-                        photoId,
-                        photoName,
-                        Status.IN_PROGRESS,
-                        new ArrayList<>()
-                )
-        );
     }
 
     private void processLandmarkDetection(String requestId, String photoUrl) {

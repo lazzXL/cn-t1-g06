@@ -181,8 +181,26 @@ public class Client {
             IPsPayload ips = new Gson().fromJson(response, IPsPayload.class);
 
             if (ips != null && !ips.ips().isEmpty()) {
-                int randomIndex = (int) (Math.random() * ips.ips().size());
-                return Either.right(ips.ips().get(randomIndex));
+
+                System.out.println("Available IPs:");
+
+                for (int i = 0; i < ips.ips().size(); i++) {
+                    System.out.printf("%d: %s\n", i + 1, ips.ips().get(i));
+                }
+
+                System.out.print("Choose an IP by number: ");
+                Scanner scanner = new Scanner(System.in);
+
+                int choice = -1;
+                while (choice < 1 || choice > ips.ips().size()) {
+                    try {
+                        choice = Integer.parseInt(scanner.nextLine());
+                    } catch (NumberFormatException e) {
+                        System.out.print("Invalid input. Choose an IP by number: ");
+                    }
+                }
+
+                return Either.right(ips.ips().get(choice - 1));
             }
 
             return Either.left(new NoValidIPs());

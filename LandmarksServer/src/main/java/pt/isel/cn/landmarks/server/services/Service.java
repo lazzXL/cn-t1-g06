@@ -44,6 +44,15 @@ public class Service {
     public Either<PhotoSubmitError, String> submitRequest(String photoId, String photoName) {
         String requestId = UUID.randomUUID().toString();
         try {
+            metadataStorage.saveAnalysisMetadata(
+                requestId,
+                new AnalysisMetadata(
+                    photoId,
+                    photoName,
+                    Status.IN_PROGRESS,
+                    new ArrayList<>()
+                )
+            );
             landmarksPublisher.publish(requestId, photoId, photoName);
             return Either.right(requestId);
         } catch (Exception e) {
