@@ -1,119 +1,92 @@
 package pt.isel.cn.instanceManager;
 
-import com.google.api.services.compute.Compute;
-import com.google.api.services.compute.model.*;
-import com.google.auth.http.HttpCredentialsAdapter;
-import com.google.auth.oauth2.GoogleCredentials;
-import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
-import com.google.api.client.json.jackson2.JacksonFactory;
+import com.google.api.gax.longrunning.OperationFuture;
+import com.google.cloud.compute.v1.InstanceGroupManagersClient;
+import com.google.cloud.compute.v1.ListManagedInstancesInstanceGroupManagersRequest;
+import com.google.cloud.compute.v1.Operation;
+import java.io.IOException;
+import java.util.Scanner;
+import java.util.concurrent.ExecutionException;
 import com.google.cloud.compute.v1.*;
 
-import java.io.FileInputStream;
-import java.util.List;
-
-public class instanceManager {
-
+public class InstanceManager {
     private static final String PROJECT_ID = "cn2425-t1-g06";
     private static final String ZONE = "europe-southwest1-a";
-    private static Compute compute;
 
-    public static void main(String[] args) throws Exception {
-        authenticate();
-        gRPCServerInstanceGroup();
-        landmarksAppInstanceGroup();
+    private static final String LANDMARKS_APP_INSTANCE_GROUP_NAME = "instance-group-landmarks-app";
+    private static final int LANDMARK_APP_INSTANCE_GROUP_MIN_SIZE = 0, LANDMARK_APP_INSTANCE_GROUP_MAX_SIZE = 2;
+    private static final String GRPC_SERVER_INSTANCE_GROUP_NAME = "instance-group-landmarks-server";
+    private static final int GRPC_SERVER_INSTANCE_GROUP_MIN_SIZE = 0, GRPC_SERVER_INSTANCE_GROUP_MAX_SIZE = 3;
+
+    public static void main(String[] args) throws IOException, ExecutionException, InterruptedException {
+        try (InstanceGroupManagersClient instanceGroupManager = InstanceGroupManagersClient.create()) {
+            int option;
+            do {
+                option = showMenu();
+                switch (option) {
+                    case 0 -> listInstances(instanceGroupManager, GRPC_SERVER_INSTANCE_GROUP_NAME);
+                    case 1 -> resizeInstances(instanceGroupManager, GRPC_SERVER_INSTANCE_GROUP_NAME, GRPC_SERVER_INSTANCE_GROUP_MIN_SIZE, GRPC_SERVER_INSTANCE_GROUP_MAX_SIZE);
+                    case 2 -> listInstances(instanceGroupManager, LANDMARKS_APP_INSTANCE_GROUP_NAME);
+                    case 3 -> resizeInstances(instanceGroupManager, LANDMARKS_APP_INSTANCE_GROUP_NAME, LANDMARK_APP_INSTANCE_GROUP_MIN_SIZE, LANDMARK_APP_INSTANCE_GROUP_MAX_SIZE);
+                    case 99 -> System.out.println("Exiting...");
+                    default -> System.out.println("Invalid option.");
+                }
+            } while (option != 99);
+        }
     }
 
-    private static void authenticate() throws Exception {
-        GoogleCredentials credentials = GoogleCredentials
-                .fromStream(new FileInputStream("aaaaaaaaaaaaa"))     //meter path do json da key p autenticacao
-                .createScoped(List.of("https://www.googleapis.com/auth/cloud-platform"));
-
-        compute = new Compute.Builder(
-                GoogleNetHttpTransport.newTrustedTransport(),
-                JacksonFactory.getDefaultInstance(),
-                new HttpCredentialsAdapter(credentials))
-                .setApplicationName("gcp-java-mig")
-                .build();
+    private static int showMenu() {
+        Scanner scanner = new Scanner(System.in);
+        int option;
+        do {
+            System.out.println("\n########## Landmarks Instance Manager ##########");
+            System.out.println(" 0 - List LandmarksServer VMs");
+            System.out.println(" 1 - Resize LandmarksServer VMs");
+            System.out.println(" 2 - List LandmarksApp VMs");
+            System.out.println(" 3 - Resize LandmarksApp VMs");
+            System.out.println("99 - Exit");
+            System.out.print("Option: ");
+            option = scanner.nextInt();
+        } while (option < 0 || (option > 3 && option != 99));
+        return option;
     }
 
-    public static void gRPCServerInstanceGroup() throws Exception {
-        String templateName = "grpc-server-template";
-        String groupName = "grpc-server-group";
-        String instanceNamePrefix = "grpc-server";
+    private static void listInstances(InstanceGroupManagersClient client, String groupName) {
+        ListManagedInstancesInstanceGroupManagersRequest request =
+                ListManagedInstancesInstanceGroupManagersRequest.newBuilder()
+                        .setProject(PROJECT_ID)
+                        .setZone(ZONE)
+                        .setInstanceGroupManager(groupName)
+                        .setReturnPartialSuccess(true)
+                        .build();
 
-        InstanceTemplate instanceTemplate = new InstanceTemplate()
-                .setName(templateName)
-                .setProperties(new InstanceProperties()
-                        .setMachineType("e2-medium")
-                        .setDisks(List.of(new AttachedDisk()
-                                .setBoot(true)
-                                .setAutoDelete(true)
-                                .setInitializeParams(new AttachedDiskInitializeParams()
-                                        .setSourceImage("projects/debian-cloud/global/images/family/debian-11")
-                                        .setDiskSizeGb(10L))))
-                        .setNetworkInterfaces(List.of(new NetworkInterface()
-                                .setNetwork("global/networks/default")))
-                );
+        InstanceGroupManagersClient.ListManagedInstancesPagedResponse response = client.listManagedInstances(request);
 
-        compute.instanceTemplates().insert(PROJECT_ID, instanceTemplate).execute();
+        if (!response.iterateAll().iterator().hasNext()) {
+            System.out.println("No instances found in " + groupName + ".");
+            return;
+        }
 
-        InstanceGroupManager instanceGroupManager = new InstanceGroupManager()
-                .setName(groupName)
-                .setBaseInstanceName(instanceNamePrefix)
-                .setInstanceTemplate(String.format("global/instanceTemplates/%s", templateName))
-                .setTargetSize(1);
-
-        compute.instanceGroupManagers().insert(PROJECT_ID, ZONE, instanceGroupManager).execute();
-
-        Autoscaler autoscaler = new Autoscaler()
-                .setName(groupName + "-autoscaler")
-                .setTarget(String.format("zones/%s/instanceGroupManagers/%s", ZONE, groupName))
-                .setAutoscalingPolicy(new AutoscalingPolicy()
-                        .setMinNumReplicas(1)
-                        .setMaxNumReplicas(3)
-                        .setCpuUtilization(new AutoscalingPolicyCpuUtilization().setUtilizationTarget(0.6)));
-
-        compute.autoscalers().insert(PROJECT_ID, ZONE, autoscaler).execute();
-
+        System.out.println("Instances in " + groupName + ":");
+        for (ManagedInstance instance : response.iterateAll())
+            System.out.println(" - " + instance.getInstance());
     }
 
-    public static void landmarksAppInstanceGroup() throws Exception {
-        String workerTemplateName = "landmarks-worker-template";
-        String workerGroupName = "landmarks-worker-group";
-        String workerInstancePrefix = "landmarks-worker";
+    private static void resizeInstances(InstanceGroupManagersClient client, String groupName, int minSize, int maxSize)
+            throws ExecutionException, InterruptedException {
+        Scanner scanner = new Scanner(System.in);
+        int newSize;
+        do {
+            System.out.printf("New size for %s (%d-%d): ", groupName, minSize, maxSize);
+            newSize = scanner.nextInt();
+        } while (newSize < minSize || newSize > maxSize);
 
-        InstanceTemplate workerTemplate = new InstanceTemplate()
-                .setName(workerTemplateName)
-                .setProperties(new InstanceProperties()
-                        .setMachineType("e2-medium")
-                        .setDisks(List.of(new AttachedDisk()
-                                .setBoot(true)
-                                .setAutoDelete(true)
-                                .setInitializeParams(new AttachedDiskInitializeParams()
-                                        .setSourceImage("projects/debian-cloud/global/images/family/debian-11")
-                                        .setDiskSizeGb(10L))))
-                        .setNetworkInterfaces(List.of(new NetworkInterface()
-                                .setNetwork("global/networks/default")))
-                );
+        OperationFuture<Operation, Operation> future = client.resizeAsync(PROJECT_ID, ZONE, groupName, newSize);
+        Operation operation = future.get();
 
-        compute.instanceTemplates().insert(PROJECT_ID, workerTemplate).execute();
-
-        InstanceGroupManager workerGroupManager = new InstanceGroupManager()
-                .setName(workerGroupName)
-                .setBaseInstanceName(workerInstancePrefix)
-                .setInstanceTemplate(String.format("global/instanceTemplates/%s", workerTemplateName))
-                .setTargetSize(0);
-
-        compute.instanceGroupManagers().insert(PROJECT_ID, ZONE, workerGroupManager).execute();
-
-        Autoscaler workerAutoscaler = new Autoscaler()
-                .setName(workerGroupName + "-autoscaler")
-                .setTarget(String.format("zones/%s/instanceGroupManagers/%s", ZONE, workerGroupName))
-                .setAutoscalingPolicy(new AutoscalingPolicy()
-                        .setMinNumReplicas(0)
-                        .setMaxNumReplicas(2)
-                        .setCpuUtilization(new AutoscalingPolicyCpuUtilization().setUtilizationTarget(0.6)));
-
-        compute.autoscalers().insert(PROJECT_ID, ZONE, workerAutoscaler).execute();
+        if (operation.hasError())
+            System.out.println("Resize error: " + operation.getError().getErrorsList());
+        else
+            System.out.println("Operation status: " + operation.getStatus());
     }
 }
