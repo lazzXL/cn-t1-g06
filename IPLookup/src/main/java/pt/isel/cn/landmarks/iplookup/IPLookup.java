@@ -6,6 +6,7 @@ import com.google.cloud.functions.HttpFunction;
 import com.google.cloud.functions.HttpRequest;
 import com.google.cloud.functions.HttpResponse;
 import com.google.gson.Gson;
+import pt.isel.cn.landmarks.domain.Config;
 import pt.isel.cn.landmarks.iplookup.dto.IPsPayload;
 import pt.isel.cn.landmarks.iplookup.error.IPLookupError;
 import pt.isel.cn.landmarks.iplookup.error.InstanceGroupNotFoundError;
@@ -19,7 +20,7 @@ import java.util.List;
  * This class implements a Google Cloud Function that retrieves the IP addresses of instances in a given instance group.
  */
 public class IPLookup implements HttpFunction {
-    private static final String PROJECT_ID = "cn2425-t1-g06";
+    private static final String PROJECT_ID = Config.PROJECT_ID;
 
     /**
      * This method validates the parameters from the HTTP request.
@@ -57,7 +58,7 @@ public class IPLookup implements HttpFunction {
         String zone = params.getRight().first();
         String groupName = params.getRight().second();
 
-        Either<IPLookupError, List<String>> result = listIpInstancesFromGroup(PROJECT_ID, zone, groupName);
+        Either<IPLookupError, List<String>> result = listIpInstancesFromGroup(zone, groupName);
 
         if (result.isLeft()) {
             response.setStatusCode(404);
@@ -71,15 +72,14 @@ public class IPLookup implements HttpFunction {
     /**
      * This method lists all the IP addresses of instances in a given instance group.
      *
-     * @param projectID The project ID.
-     * @param zone The zone where the instances are located.
+     * @param zone      The zone where the instances are located.
      * @param groupName The name of the instance group.
      * @return A list of IP addresses of the instances in the group.
      */
-    private Either<IPLookupError, List<String>> listIpInstancesFromGroup(String projectID, String zone, String groupName) {
+    private Either<IPLookupError, List<String>> listIpInstancesFromGroup(String zone, String groupName) {
         List<String> ipList = new ArrayList<>();
         try (InstancesClient client = InstancesClient.create()) {
-            for (Instance curInst : client.list(projectID, zone).iterateAll()) {
+            for (Instance curInst : client.list(PROJECT_ID, zone).iterateAll()) {
                 if (curInst.getName().contains(groupName)) {
                     String ip = curInst.getNetworkInterfaces(0).getAccessConfigs(0).getNatIP();
                     if (!ip.isBlank()) {

@@ -8,9 +8,10 @@ import java.io.IOException;
 import java.util.Scanner;
 import java.util.concurrent.ExecutionException;
 import com.google.cloud.compute.v1.*;
+import pt.isel.cn.landmarks.domain.Config;
 
 public class InstanceManager {
-    private static final String PROJECT_ID = "cn2425-t1-g06";
+    private static final String PROJECT_ID = Config.PROJECT_ID;
     private static final String ZONE = "europe-southwest1-a";
 
     private static final String LANDMARKS_APP_INSTANCE_GROUP_NAME = "instance-group-landmarks-app";

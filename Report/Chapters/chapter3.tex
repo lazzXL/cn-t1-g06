@@ -1,27 +1,260 @@
 % \chapter{Tutorial de \texttt{LaTeX} com exemplos}
 % \label{cha:a_short_latex_tutorial_with_examples}
 % 
+
 \chapter{Detalhes da Implementação}
 \label{cha:implementation_details}
+Esta secção descreve os principais componentes da solução implementada, detalhando os pressupostos adotados entre os diversos módulos, o protocolo de comunicação estabelecido, o modelo de dados utilizado para a persistência da informação, bem como o contrato definido entre o servidor e o cliente gRPC.
 
 \subsection{Contrato da Aplicação}
 \label{ssec:application_contract}
 
-\subsection{Servidor Grpc}
+A interface do sistema com os clientes é realizada através de um servidor gRPC,
+que funciona como uma fachada, ocultando a complexidade e os detalhes da
+infraestrutura em nuvem. A definição do serviço encontra-se na
+Listagem~\ref{lst:grpc_service_definition}, onde são especificados três métodos
+remotos principais:
+
+\begin{center}
+  \begin{lstlisting}[
+  language=java,
+  numbers=none,
+  basicstyle=\scriptsize\ttfamily,
+  caption={Definição do Serviço gRPC},
+  label={lst:grpc_service_definition},
+]
+service LandmarksService {
+  rpc submitPhoto(stream SubmitPhotoRequest) returns (SubmitIdentifier) {}
+  rpc lookupResults(SubmitIdentifier) returns (LookupResults)  {}
+  rpc getPhotos(ConfidenceThreshold) returns (GetPhotosResponse) {}
+}
+\end{lstlisting}
+\end{center}
+
+O método \texttt{submitPhoto} permite a submissão de uma imagem por streaming,
+enviada em blocos, evitando que o cliente tenha de carregar a imagem inteira em
+memória. Inicialmente, o cliente transmite os metadados da imagem, como nome e
+hash, permitindo ao servidor verificar duplicações antes de iniciar o
+armazenamento no \textit{Cloud Storage}, seguido pelo envio dos blocos binários
+da imagem. O método \texttt{lookupResults} possibilita consultar os resultados
+do processamento com base num identificador de submissão, enquanto
+\texttt{getPhotos} retorna todas as imagens processadas em que a deteção de um
+monumento supera um determinado limiar de confiança.
+
+A operação \texttt{submitPhoto} utiliza a mensagem \texttt{SubmitPhotoRequest},
+apresentada na Listagem~\ref{lst:submit-photo-data}, que diferencia entre os
+blocos binários da imagem (\texttt{photo\_chunk}) e os metadados associados
+(\texttt{metadata}):
+
+\begin{center}
+  \begin{minipage}{0.48\textwidth}
+    \begin{lstlisting}[
+    language=java,
+    numbers=none,
+    basicstyle=\scriptsize\ttfamily,
+    caption={Dados utilizados na operação \texttt{submitPhoto}},
+    label={lst:submit-photo-data},
+]
+message SubmitPhotoRequest {
+  oneof payload {
+    bytes photo_chunk = 1;
+    ImageMetadata metadata = 2;
+  }
+}
+
+message ImageMetadata {
+  string name = 1;
+  string hash = 2;
+}
+
+message SubmitIdentifier {
+  string identifier = 1;
+}
+\end{lstlisting}
+  \end{minipage}
+  \hfill
+  \begin{minipage}{0.48\textwidth}
+    \begin{lstlisting}[
+    language=java,
+    basicstyle=\scriptsize\ttfamily,
+    numbers=none,
+    caption={Dados utilizados nas operações \texttt{lookupResults} e \texttt{getPhotos}},
+    label={lst:presentation-class},
+]
+message ConfidenceThreshold {
+  double confidence_threshold = 1;
+}
+
+message GetPhotosResponse {
+  repeated Photo photos = 1;
+}
+\end{lstlisting}
+  \end{minipage}
+\end{center}
+
+O campo \texttt{hash} na estrutura \texttt{ImageMetadata} corresponde a um hash
+da imagem (por exemplo, SHA-256) gerado no lado do cliente. Este valor é
+utilizado para verificar duplicações no sistema: caso uma imagem com o mesmo
+hash já tenha sido submetida anteriormente, a nova submissão pode ser ignorada
+ou associada ao processamento existente, evitando redundância no armazenamento
+em \texttt{Cloud Storage}. A resposta da operação \texttt{submitPhoto} é uma
+mensagem \texttt{SubmitIdentifier}, contendo um identificador único que
+referencia o pedido submetido e que será utilizado nas chamadas subsequentes
+para recuperar resultados.
+
+As operações \texttt{lookupResults} e \texttt{getPhotos} utilizam as mensagens
+apresentadas na Listagem~\ref{lst:presentation-class}. No caso de
+\texttt{getPhotos}, o cliente especifica um limiar de confiança para filtrar
+apenas os resultados relevantes.
+
+A estrutura \texttt{ConfidenceThreshold} permite ao cliente definir o grau
+mínimo de certeza que deve ser respeitado para que uma imagem seja incluída na
+resposta. A estrutura \texttt{GetPhotosResponse} retorna uma lista de objetos
+\texttt{Photo}, cada um contendo a associação entre a imagem e o monumento
+identificado.
+
+As representações das entidades de domínio — \texttt{Landmark} e \texttt{Photo}
+— estão definidas na Listagem~\ref{lst:lookup-results-data}.
+
+\begin{center}
+  \begin{lstlisting}[
+  language=Java,
+  numbers=none,
+  basicstyle=\scriptsize\ttfamily,
+  caption={Representação de monumentos e fotos no contrato gRPC},
+  label={lst:lookup-results-data},
+]
+message Landmark {
+  string name = 1;
+  double latitude = 2;
+  double longitude = 3;
+  double confidence = 4;
+}
+
+message Photo {
+  string photo_name = 1;
+  string landmark_name = 2;
+  double confidence = 3;
+}
+\end{lstlisting}
+\end{center}
+
+A mensagem \texttt{Landmark} representa a deteção de um local reconhecido pela
+API de Visão da Google, incluindo o nome, a localização geográfica (latitude e
+longitude em graus decimais) e o grau de confiança atribuído à identificação. A
+mensagem \texttt{Photo} agrega o nome do ficheiro da imagem, o nome do
+monumento identificado e o grau de confiança correspondente.
+
+Este contrato gRPC estabelece os fundamentos para a comunicação entre cliente e
+servidor, permitindo uma separação clara de responsabilidades e garantindo a
+extensibilidade e clareza da interface.
+
+\subsection{Servidor gRPC}
 \label{ssec:grpc_server}
+
+O servidor gRPC funciona como ponto central de todas as interações entre o
+cliente e o sistema. A classe principal, \texttt{LandmarksServer}, estende a
+implementação base gerada a partir do contrato gRPC, expondo as operações
+definidas na Listagem~\ref{lst:grpc_service_definition}. Esta classe é
+responsável por coordenar os serviços auxiliares que tratam da submissão de
+imagens, consulta de resultados e filtragem de fotos de acordo com o grau de
+confiança especificado.
 
 \subsubsection{Protocolo de Comunicação}
 \label{ssec:grpc_server_protocol}
 
+A operação \texttt{submitPhoto} é implementada através de streaming
+bidirecional. Inicialmente, o servidor recebe os metadados da imagem (nome e
+hash SHA-256) e, em seguida, os blocos binários da imagem codificada. Esta
+lógica é gerida pela classe auxiliar \texttt{PhotoSubmitStreamObserver}, que
+valida a integridade da imagem comparando o hash calculado localmente com o
+fornecido pelo cliente. Se for detetada uma discrepância entre os hashes, a
+operação é interrompida e um erro \texttt{Status.INVALID\_ARGUMENT} é devolvido
+ao cliente. Este mecanismo garante que a imagem recebida corresponde à enviada
+pelo cliente, prevenindo problemas de corrupção ou manipulação de dados. Além
+disso, assegura que cada imagem é armazenada apenas uma vez no \textit{Cloud
+  Storage}, promovendo uma utilização eficiente dos recursos de armazenamento.
+
+Caso a imagem já exista no \texttt{Cloud Storage} (verificada via
+\texttt{service.photoExists}), o processo de gravação no Cloud Storage é
+evitado. Caso contrário, a imagem é armazenada através de um
+\texttt{WriteChannel} obtido do serviço de \texttt{BlobStorage}. Ao final da
+submissão, o hash da imagem é validado e, se bem-sucedido, é criado um novo
+pedido de análise ao serviço Pub/Sub, e são armazenados os metadados da
+submissão iniciais no \texttt{Firestore} através do serviço
+\texttt{MetadataStorage}.
+
+A operação \texttt{lookupResults} recebe um identificador de submissão e tenta
+obter os dados de análise associados no \texttt{Firestore}. Caso os dados ainda
+não estejam disponíveis (estado \texttt{IN\_PROGRESS}) ou a submissão tenha
+falhado (\texttt{FAILURE}), são retornados erros apropriados (e.g.,
+\texttt{Status.UNAVAILABLE} ou \texttt{Status.FAILED\_PRECONDITION}).
+
+Quando os resultados estão disponíveis, são retornadas instâncias da estrutura
+\texttt{Landmark}, contendo o nome, localização geográfica e grau de confiança.
+A localização com maior confiança é usada para obter um mapa estático via
+\texttt{MapsService}, que realiza uma chamada à \textit{API Static Maps} da
+Google, retornando uma imagem do mapa com o monumento identificado.
+
+A operação \texttt{getPhotos} recebe um limiar de confiança e devolve todas as
+imagens cujas detecções ultrapassam esse valor. Para cada submissão elegível, é
+retornado o nome da imagem, o nome do monumento identificado com maior
+confiança e o respetivo valor de confiança, utilizando objetos \texttt{Photo}.
+
 \subsubsection{Modelo de Dados Firestore}
 \label{ssec:grpc_server_firestore_model}
+
+O modelo de dados armazenado no Firestore é representado pelas seguintes
+classes Java:
+
+\begin{lstlisting}[language=java, caption={Representação de um monumento identificado}, label={lst:landmark-metadata}]
+public record LandmarkMetadata(
+    String name,
+    Location location,
+    double confidence
+) {}
+\end{lstlisting}
+
+Cada objeto \texttt{LandmarkMetadata} representa um monumento detetado na
+imagem. Contém o nome do monumento identificado, um objeto \texttt{Location}
+que encapsula as coordenadas geográficas (latitude e longitude) e o grau de
+confiança atribuído pela API de Visão da Google.
+
+A análise completa de uma imagem é representada por uma instância da classe
+\texttt{AnalysisMetadata}, conforme segue:
+
+\begin{lstlisting}[language=java, caption={Metadados associados a uma submissão}, label={lst:analysis-metadata}]
+public record AnalysisMetadata(
+    String photoId,
+    String photoName,
+    Status status,
+    List<LandmarkMetadata> landmarks
+) {}
+\end{lstlisting}
+
+A estrutura \texttt{AnalysisMetadata} é persistida no Firestore com os
+seguintes campos: um identificador único da imagem baseado no hash SHA-256
+(\texttt{photoId}), o nome original do ficheiro submetido (\texttt{photoName}),
+o estado da análise (\texttt{IN\_PROGRESS}, \texttt{SUCCESS} ou
+\texttt{FAILURE}) e uma lista de objetos \texttt{LandmarkMetadata} que
+representam todos os monumentos identificados na imagem.
+
+Esta estrutura é armazenada usando o identificador de submissão
+(\texttt{requestId}) como chave primária, permitindo que seja consultada
+diretamente para obter os resultados da análise de uma submissão específica.
+Para obter todas as imagens cujo grau de confiança de uma deteção ultrapassa um
+determinado limiar, utiliza-se uma consulta com filtro sobre o campo
+\texttt{confidence} das entradas de \texttt{LandmarkMetadata}.
 
 \subsection{Cliente Grpc}
 \label{ssec:grpc_client}
 
-O módulo Cliente Grpc é uma aplicação de linha de comandos que permite ao utilizador interagir com o sistema através de chamadas gRPC definidas no contrato.
+O módulo Cliente Grpc é uma aplicação de linha de comandos que permite ao
+utilizador interagir com o sistema através de chamadas gRPC definidas no
+contrato.
 
-Este cliente é responsável por fornecer as três funcionalidades principais exigidas no enunciado do projeto:
+Este cliente é responsável por fornecer as três funcionalidades principais
+exigidas no enunciado do projeto:
 
 \begin{itemize}
   \item Submissão de uma imagem para deteção de monumentos;
@@ -29,34 +262,68 @@ Este cliente é responsável por fornecer as três funcionalidades principais ex
   \item Consulta das imagens com monumentos detetados acima de um limite de confiança.
 \end{itemize}
 
-Para garantir que o cliente se liga a uma instância válida do servidor gRPC, este efetua previamente uma chamada HTTP à função IPLookup, que retorna uma lista de IPs de instâncias ativas.
-
+Para garantir que o cliente se liga a uma instância válida do servidor gRPC,
+este efetua previamente uma chamada HTTP à função IPLookup, que retorna uma
+lista de IPs de instâncias ativas.
 
 \subsubsection{Protocolo de Comunicação}
 \label{ssec:grpc_client_protocol}
 
-A submissão de imagens pelo cliente ao sistema CN2425TF é realizada através de uma chamada gRPC com streaming do lado do cliente, definida no método \texttt{submitPhoto}. Este processo envolve a transmissão da imagem em blocos binários, acompanhada de metadados, com o objetivo de garantir a integridade dos dados e permitir o processamento assíncrono no servidor.
+A submissão de imagens pelo cliente ao sistema CN2425TF é realizada através de
+uma chamada gRPC com streaming do lado do cliente, definida no método
+\texttt{submitPhoto}. Este processo envolve a transmissão da imagem em blocos
+binários, acompanhada de metadados, com o objetivo de garantir a integridade
+dos dados e permitir o processamento assíncrono no servidor.
 
-Antes de iniciar a submissão, o cliente calcula o hash SHA-256 do ficheiro da imagem. O primeiro elemento enviado no stream é uma mensagem contendo os metadados da imagem, nomeadamente o nome (sem extensão) e o hash calculado.
+Antes de iniciar a submissão, o cliente calcula o hash SHA-256 do ficheiro da
+imagem. O primeiro elemento enviado no stream é uma mensagem contendo os
+metadados da imagem, nomeadamente o nome (sem extensão) e o hash calculado.
 
-Seguidamente, a imagem é lida localmente em blocos fixos de 4KB, e cada bloco é enviado como uma mensagem distinta. O cliente transmite os blocos de forma sequencial até ao final do ficheiro, após o que encerra explicitamente o stream.
+Seguidamente, a imagem é lida localmente em blocos fixos de 4KB, e cada bloco é
+enviado como uma mensagem distinta. O cliente transmite os blocos de forma
+sequencial até ao final do ficheiro, após o que encerra explicitamente o
+stream.
 
-As chamadas \texttt{lookupResults} e \texttt{getPhotos} são operações unárias tradicionais. A primeira permite ao cliente obter os resultados da análise de uma imagem submetida, incluindo os monumentos detetados e, se disponível, uma imagem de mapa da zona gerada através da API Static Maps que é guardada localmente como um ficheiro PNG. A segunda permite obter uma lista de fotos em que foram identificados monumentos com um nível de confiança superior a um valor definido pelo utilizador.
-
-
-
+As chamadas \texttt{lookupResults} e \texttt{getPhotos} são operações unárias
+tradicionais. A primeira permite ao cliente obter os resultados da análise de
+uma imagem submetida, incluindo os monumentos detetados e, se disponível, uma
+imagem de mapa da zona gerada através da API Static Maps que é guardada
+localmente como um ficheiro PNG. A segunda permite obter uma lista de fotos em
+que foram identificados monumentos com um nível de confiança superior a um
+valor definido pelo utilizador.
 
 \subsection{Serviço Pub/Sub}
 \label{ssec:pubsub_service}
 
-O sistema CN2425TF utiliza o serviço Google Cloud Pub/Sub como mecanismo de comunicação assíncrona entre o servidor gRPC e os workers responsáveis pela análise das imagens submetidas.
-Após a submissão bem-sucedida de uma imagem pelo cliente, o servidor publica uma mensagem num tópico do Pub/Sub. Esta mensagem contém um conjunto de atributos que identificam a imagem armazenada, incluindo o \texttt{photoId}, \texttt{photoName}, \texttt{bucketName}, e o identificador da submissão (\texttt{requestId}). A publicação é feita através da classe \texttt{LandmarksPublisher}, que utiliza a API da Google para enviar a mensagem para o tópico correspondente ao armazenamento das fotos.
+O sistema CN2425TF utiliza o serviço Google Cloud Pub/Sub como mecanismo de
+comunicação assíncrona entre o servidor gRPC e os workers responsáveis pela
+análise das imagens submetidas. Após a submissão bem-sucedida de uma imagem
+pelo cliente, o servidor publica uma mensagem num tópico do Pub/Sub. Esta
+mensagem contém um conjunto de atributos que identificam a imagem armazenada,
+incluindo o \texttt{photoId}, \texttt{photoName}, \texttt{bucketName}, e o
+identificador da submissão (\texttt{requestId}). A publicação é feita através
+da classe \texttt{LandmarksPublisher}, que utiliza a API da Google para enviar
+a mensagem para o tópico correspondente ao armazenamento das fotos.
 
-Os workers implementados no módulo \textit{LandmarksApp} estão inscritos numa subscrição associada a esse tópico, que utilizam o padrão \textit{work queue}. Cada instância do worker executa um \texttt{subscriber} que escuta continuamente por novas mensagens. Quando uma mensagem é recebida, o worker extrai os atributos e acede à imagem no \texttt{Cloud Storage} ao usar a URL pública gerada a partir do bucket e do nome do blob.
+Os workers implementados no módulo \textit{LandmarksApp} estão inscritos numa
+subscrição associada a esse tópico, que utilizam o padrão \textit{work queue}.
+Cada instância do worker executa um \texttt{subscriber} que escuta
+continuamente por novas mensagens. Quando uma mensagem é recebida, o worker
+extrai os atributos e acede à imagem no \texttt{Cloud Storage} ao usar a URL
+pública gerada a partir do bucket e do nome do blob.
 
-De seguida, o worker executa a análise da imagem com recurso à API Google Vision, deteta monumentos ou pontos de interesse (landmarks) e as respetivas localizações. O resultado da análise, representado por uma lista de \texttt{LandmarkMetadata}, é então armazenado no serviço Firestore, juntamente com a atualização do estado da submissão para \texttt{SUCCESS} ou \texttt{FAILURE}, consoante o sucesso da operação.
+De seguida, o worker executa a análise da imagem com recurso à API Google
+Vision, deteta monumentos ou pontos de interesse (landmarks) e as respetivas
+localizações. O resultado da análise, representado por uma lista de
+\texttt{LandmarkMetadata}, é então armazenado no serviço Firestore, juntamente
+com a atualização do estado da submissão para \texttt{SUCCESS} ou
+\texttt{FAILURE}, consoante o sucesso da operação.
 
-Este mecanismo baseado em Pub/Sub garante que os pedidos de análise não se perdem, mesmo em caso de falha temporária dos workers, e permite processar múltiplas imagens em paralelo, consoante o número de instâncias ativas no grupo \texttt{LandmarksApp}. A arquitetura é, por isso, altamente escalável e compatível com o modelo de computação em nuvem.
+Este mecanismo baseado em Pub/Sub garante que os pedidos de análise não se
+perdem, mesmo em caso de falha temporária dos workers, e permite processar
+múltiplas imagens em paralelo, consoante o número de instâncias ativas no grupo
+\texttt{LandmarksApp}. A arquitetura é, por isso, altamente escalável e
+compatível com o modelo de computação em nuvem.
 
 \subsection{Função Cloud IPLookup}
 \label{ssec:cloud_function_iplookup}
@@ -64,11 +331,10 @@ A função IPLookup, implementada no \textit{Google Cloud Platform} como uma \te
 O nome do grupo e sua zona são especificados como argumentos na chamada \textit{HTTP GET} à URL gerada após o \textit{deploy}.
 Caso algum parâmetro seja inválido, a função retorna imediatamente um erro \textit{HTTP 400} (\textit{Bad Request}), garantindo validação robusta dos \textit{inputs}.
 Utilizando \textit{InstancesClient}, lista todas as instâncias na zona especificada, filtrando as que contêm o \textit{groupName} no identificador.
-Para cada instância válida, extrai o IP público (\textit{NAT IP}) da primeira interface de rede. 
-Se nenhuma instância for encontrada, retorna \textit{HTTP 404}; caso contrário, devolve um payload \textit{JSON} contendo a lista de IPs. 
+Para cada instância válida, extrai o IP público (\textit{NAT IP}) da primeira interface de rede.
+Se nenhuma instância for encontrada, retorna \textit{HTTP 404}; caso contrário, devolve um payload \textit{JSON} contendo uma instância de \texttt{IPsPayload}, que encapsula uma lista de endereços IP.
 
-
-\subsection{Gestor de Instâncias}	
+\subsection{Gestor de Instâncias}
 \label{ssec:instance_manager}
 
 \subsection{Pontos de falha da Aplicação}
