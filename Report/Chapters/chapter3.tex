@@ -52,7 +52,7 @@ As chamadas \texttt{lookupResults} e \texttt{getPhotos} são operações unária
 O sistema CN2425TF utiliza o serviço Google Cloud Pub/Sub como mecanismo de comunicação assíncrona entre o servidor gRPC e os workers responsáveis pela análise das imagens submetidas.
 Após a submissão bem-sucedida de uma imagem pelo cliente, o servidor publica uma mensagem num tópico do Pub/Sub. Esta mensagem contém um conjunto de atributos que identificam a imagem armazenada, incluindo o \texttt{photoId}, \texttt{photoName}, \texttt{bucketName}, e o identificador da submissão (\texttt{requestId}). A publicação é feita através da classe \texttt{LandmarksPublisher}, que utiliza a API da Google para enviar a mensagem para o tópico correspondente ao armazenamento das fotos.
 
-Os workers implementados no módulo \texttt{LandmarksApp} estão inscritos numa subscrição associada a esse tópico, que utilizam o padrão \textit{work queue}. Cada instância do worker executa um \texttt{subscriber} que escuta continuamente por novas mensagens. Quando uma mensagem é recebida, o worker extrai os atributos e acede à imagem no \texttt{Cloud Storage} ao usar a URL pública gerada a partir do bucket e do nome do blob.
+Os workers implementados no módulo \textit{LandmarksApp} estão inscritos numa subscrição associada a esse tópico, que utilizam o padrão \textit{work queue}. Cada instância do worker executa um \texttt{subscriber} que escuta continuamente por novas mensagens. Quando uma mensagem é recebida, o worker extrai os atributos e acede à imagem no \texttt{Cloud Storage} ao usar a URL pública gerada a partir do bucket e do nome do blob.
 
 De seguida, o worker executa a análise da imagem com recurso à API Google Vision, deteta monumentos ou pontos de interesse (landmarks) e as respetivas localizações. O resultado da análise, representado por uma lista de \texttt{LandmarkMetadata}, é então armazenado no serviço Firestore, juntamente com a atualização do estado da submissão para \texttt{SUCCESS} ou \texttt{FAILURE}, consoante o sucesso da operação.
 
@@ -60,6 +60,13 @@ Este mecanismo baseado em Pub/Sub garante que os pedidos de análise não se per
 
 \subsection{Função Cloud IPLookup}
 \label{ssec:cloud_function_iplookup}
+A função IPLookup, implementada no \textit{Google Cloud Platform} como uma \textit{HTTP Function} do \textit{Google Cloud Function}, utiliza a API do \textit{Google Cloud Compute} para obter endereços IP de instâncias em um \textit{Instance Group}.
+O nome do grupo e sua zona são especificados como argumentos na chamada \textit{HTTP GET} à URL gerada após o \textit{deploy}.
+Caso algum parâmetro seja inválido, a função retorna imediatamente um erro \textit{HTTP 400} (\textit{Bad Request}), garantindo validação robusta dos \textit{inputs}.
+Utilizando \textit{InstancesClient}, lista todas as instâncias na zona especificada, filtrando as que contêm o \textit{groupName} no identificador.
+Para cada instância válida, extrai o IP público (\textit{NAT IP}) da primeira interface de rede. 
+Se nenhuma instância for encontrada, retorna \textit{HTTP 404}; caso contrário, devolve um payload \textit{JSON} contendo a lista de IPs. 
+
 
 \subsection{Gestor de Instâncias}	
 \label{ssec:instance_manager}
