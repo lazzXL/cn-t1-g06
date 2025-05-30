@@ -339,3 +339,11 @@ Se nenhuma instância for encontrada, retorna \textit{HTTP 404}; caso contrário
 
 \subsection{Pontos de falha da Aplicação}
 \label{ssec:application_failure_points}
+
+O sistema integra diversos serviços disponibilizados pela Google Cloud Platform, nomeadamente a API Cloud Vision e a API Static Maps, bem como os serviços Firestore, Cloud Storage e Pub/Sub. Esta integração, embora essencial para a arquitetura da solução, introduz pontos de falha adicionais relacionados com a disponibilidade e funcionamento desses serviços.
+
+A componente \texttt{LandmarksApp}, responsável pela análise das imagens submetidas, depende diretamente da API Google Vision para detetar monumentos e pontos de interesse. Se esta API estiver temporariamente indisponível, com falhas de autenticação, limites de utilização excedidos, ou indisponibilidade regional, os pedidos de análise falham. Nestes casos, os resultados são marcados como \texttt{FAILURE} no Firestore, mesmo que a imagem tenha sido corretamente submetida e armazenada.
+
+De forma semelhante, a geração de mapas de localização no servidor gRPC depende da API Static Maps. Uma falha nesta API pode impedir que o mapa seja incluído na resposta ao cliente, reduzindo a qualidade da informação fornecida, apesar de os dados dos monumentos estarem disponíveis.
+
+Estas dependências tornam o sistema vulnerável a falhas externas que estão fora do controlo direto dos programadores ou operadores da aplicação.
