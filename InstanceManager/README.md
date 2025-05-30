@@ -15,9 +15,12 @@ Facilita o arranque, monitorização e paragem dos serviços necessários, apoia
     - `GOOGLE_APPLICATION_CREDENTIALS`: Caminho para o ficheiro da conta de serviço do Google Cloud.
 - Configurar a classe `Config` no componente `LandmarksDomain` com o ID do projeto Google Cloud e os nomes dos recursos.
 
-## Build
+## Build e Execução
 
 ```bash
 # Compilar o projeto
 mvn clean install
+
+# Executar o gestor de instâncias
+java -jar target/InstanceManager-1.0-jar-with-dependencies.jar
 ```

@@ -336,10 +336,10 @@ Se nenhuma instância for encontrada, retorna \textit{HTTP 404}; caso contrário
 
 \subsection{Gestor de Instâncias}
 \label{ssec:instance_manager}
-Para garantir a elasticidade do sistema, implementámos um gestor de instâncias que cria dois \textit{instance groups}: 
-um com réplicas do servidor gRPC e outro com réplicas da aplicação. 
-Criámos um menu para que o utilizador possa, de forma simples, listar as instâncias ativas e alterar o número de réplicas conforme necessário. 
-O número de instâncias da aplicação pode ser modificado pelo utilizador, desde que respeite os limites definidos — neste caso, entre zero e duas. 
+Para garantir a elasticidade do sistema, implementámos um gestor de instâncias que cria dois \textit{instance groups}:
+um com réplicas do servidor gRPC e outro com réplicas da aplicação.
+Criámos um menu para que o utilizador possa, de forma simples, listar as instâncias ativas e alterar o número de réplicas conforme necessário.
+O número de instâncias da aplicação pode ser modificado pelo utilizador, desde que respeite os limites definidos — neste caso, entre zero e duas.
 Já as instâncias do servidor podem variar entre uma e três.
 
 \subsection{Pontos de falha da Aplicação}
@@ -352,3 +352,25 @@ A componente \texttt{LandmarksApp}, responsável pela análise das imagens subme
 De forma semelhante, a geração de mapas de localização no servidor gRPC depende da API Static Maps. Uma falha nesta API pode impedir que o mapa seja incluído na resposta ao cliente, reduzindo a qualidade da informação fornecida, apesar de os dados dos monumentos estarem disponíveis.
 
 Estas dependências tornam o sistema vulnerável a falhas externas que estão fora do controlo direto dos programadores ou operadores da aplicação.
+
+\chapter{Responsabilidade da Implementação de Cada Componente}
+\label{sec:component_responsibilities}
+
+A tabela seguinte apresenta cada componente principal do sistema e os responsáveis primários pela sua implementação. O
+desenvolvimento de cada componente teve o envolvimento de todos os membros do grupo, mas a tabela indica quem foi
+mais ativo na implementação de cada parte específica do sistema.
+
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Componente}           & \textbf{Responsável Primário}      \\
+\hline
+Servidor gRPC                 & Bernardo Pereira                   \\
+Contrato gRPC                 & Todos                              \\
+Cliente gRPC                  & Tiago Adriano                      \\
+Serviço Pub/Sub               & Bernardo Pereira                   \\
+Função Cloud IPLookup         & Gabriel Lemos                      \\
+Gestor de Instâncias          & Tomás Silva                        \\
+\hline
+\end{tabular}
+\end{center}

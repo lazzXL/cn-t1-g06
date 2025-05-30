@@ -1,12 +1,21 @@
 \chapter{Conclusão}
 \label{sec:conclusion}
-O sistema CN2425TF, desenvolvido no âmbito da unidade curricular de Computação na Nuvem, 
-demonstra uma aplicação prática e robusta dos serviços oferecidos pela Google Cloud Platform na construção de uma solução escalável, 
-tolerante a falhas e orientada a microserviços. A arquitetura proposta permite aos utilizadores submeter imagens para análise de monumentos, 
-consultar resultados e obter informação georreferenciada, aproveitando de forma eficaz serviços como Cloud Storage, Firestore, Pub/Sub, 
-Cloud Functions, Vision API e Static Maps API.
-A utilização do protocolo gRPC como interface entre cliente e servidor revelou-se adequada para garantir comunicações eficientes e estruturadas, 
-enquanto o uso de streaming na submissão de imagens permitiu otimizar a transmissão de dados e validar a integridade dos ficheiros submetidos. 
-O modelo de dados implementado no Firestore possibilita uma persistência clara, escalável e facilmente consultável dos resultados da análise efetuada.
-Adicionalmente, a integração com o Pub/Sub para orquestração assíncrona do processamento das imagens, bem como a separação de responsabilidades entre os diversos componentes, 
-contribui para a modularidade e extensibilidade da aplicação. O cliente em linha de comandos permite ao utilizador explorar todas as funcionalidades do sistema de forma simples e eficaz.
+
+O sistema CN2425TF, desenvolvido no âmbito da unidade curricular de Computação
+na Nuvem, demonstra uma aplicação prática dos serviços oferecidos pela Google
+Cloud Platform na construção de uma solução escalável, tolerante a falhas e
+orientada a microserviços. A arquitetura proposta permite aos utilizadores
+submeter imagens para análise de monumentos, consultar resultados e obter
+informação georreferenciada, aproveitando serviços como \textit{Cloud Storage},
+\textit{Firestore}, \textit{Pub/Sub}, \textit{Cloud Functions}, \textit{Vision
+    API} e \textit{Static Maps API}. API. A utilização do protocolo gRPC como
+interface entre cliente e servidor revelou-se adequada para garantir
+comunicações eficientes e estruturadas, enquanto o uso de streaming na
+submissão de imagens permitiu otimizar a transmissão de dados. O modelo de
+dados implementado no Firestore possibilita uma persistência clara, escalável e
+facilmente consultável dos resultados da análise efetuada. Adicionalmente, a
+integração com o Pub/Sub para orquestração assíncrona do processamento das
+imagens, bem como a separação de responsabilidades entre os diversos
+componentes, contribui para a modularidade e extensibilidade da aplicação. O
+cliente em linha de comandos permite ao utilizador explorar todas as
+funcionalidades do sistema de forma simples e eficaz.
