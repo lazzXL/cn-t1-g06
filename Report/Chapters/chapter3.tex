@@ -336,6 +336,11 @@ Se nenhuma instância for encontrada, retorna \textit{HTTP 404}; caso contrário
 
 \subsection{Gestor de Instâncias}
 \label{ssec:instance_manager}
+Para garantir a elasticidade do sistema, implementámos um gestor de instâncias que cria dois \textit{instance groups}: 
+um com réplicas do servidor gRPC e outro com réplicas da aplicação. 
+Criámos um menu para que o utilizador possa, de forma simples, listar as instâncias ativas e alterar o número de réplicas conforme necessário. 
+O número de instâncias da aplicação pode ser modificado pelo utilizador, desde que respeite os limites definidos — neste caso, entre zero e duas. 
+Já as instâncias do servidor podem variar entre uma e três.
 
 \subsection{Pontos de falha da Aplicação}
 \label{ssec:application_failure_points}
