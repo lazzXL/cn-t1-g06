@@ -19,11 +19,44 @@
 \subsection{Cliente Grpc}
 \label{ssec:grpc_client}
 
+O módulo Cliente Grpc é uma aplicação de linha de comandos que permite ao utilizador interagir com o sistema através de chamadas gRPC definidas no contrato.
+
+Este cliente é responsável por fornecer as três funcionalidades principais exigidas no enunciado do projeto:
+
+\begin{itemize}
+  \item Submissão de uma imagem para deteção de monumentos;
+  \item Consulta dos resultados da análise de uma imagem submetida;
+  \item Consulta das imagens com monumentos detetados acima de um limite de confiança.
+\end{itemize}
+
+Para garantir que o cliente se liga a uma instância válida do servidor gRPC, este efetua previamente uma chamada HTTP à função IPLookup, que retorna uma lista de IPs de instâncias ativas.
+
+
 \subsubsection{Protocolo de Comunicação}
 \label{ssec:grpc_client_protocol}
 
+A submissão de imagens pelo cliente ao sistema CN2425TF é realizada através de uma chamada gRPC com streaming do lado do cliente, definida no método \texttt{submitPhoto}. Este processo envolve a transmissão da imagem em blocos binários, acompanhada de metadados, com o objetivo de garantir a integridade dos dados e permitir o processamento assíncrono no servidor.
+
+Antes de iniciar a submissão, o cliente calcula o hash SHA-256 do ficheiro da imagem. O primeiro elemento enviado no stream é uma mensagem contendo os metadados da imagem, nomeadamente o nome (sem extensão) e o hash calculado.
+
+Seguidamente, a imagem é lida localmente em blocos fixos de 4KB, e cada bloco é enviado como uma mensagem distinta. O cliente transmite os blocos de forma sequencial até ao final do ficheiro, após o que encerra explicitamente o stream.
+
+As chamadas \texttt{lookupResults} e \texttt{getPhotos} são operações unárias tradicionais. A primeira permite ao cliente obter os resultados da análise de uma imagem submetida, incluindo os monumentos detetados e, se disponível, uma imagem de mapa da zona gerada através da API Static Maps que é guardada localmente como um ficheiro PNG. A segunda permite obter uma lista de fotos em que foram identificados monumentos com um nível de confiança superior a um valor definido pelo utilizador.
+
+
+
+
 \subsection{Serviço Pub/Sub}
 \label{ssec:pubsub_service}
+
+O sistema CN2425TF utiliza o serviço Google Cloud Pub/Sub como mecanismo de comunicação assíncrona entre o servidor gRPC e os workers responsáveis pela análise das imagens submetidas.
+Após a submissão bem-sucedida de uma imagem pelo cliente, o servidor publica uma mensagem num tópico do Pub/Sub. Esta mensagem contém um conjunto de atributos que identificam a imagem armazenada, incluindo o \texttt{photoId}, \texttt{photoName}, \texttt{bucketName}, e o identificador da submissão (\texttt{requestId}). A publicação é feita através da classe \texttt{LandmarksPublisher}, que utiliza a API da Google para enviar a mensagem para o tópico correspondente ao armazenamento das fotos.
+
+Os workers implementados no módulo \texttt{LandmarksApp} estão inscritos numa subscrição associada a esse tópico, que utilizam o padrão \textit{work queue}. Cada instância do worker executa um \texttt{subscriber} que escuta continuamente por novas mensagens. Quando uma mensagem é recebida, o worker extrai os atributos e acede à imagem no \texttt{Cloud Storage} ao usar a URL pública gerada a partir do bucket e do nome do blob.
+
+De seguida, o worker executa a análise da imagem com recurso à API Google Vision, deteta monumentos ou pontos de interesse (landmarks) e as respetivas localizações. O resultado da análise, representado por uma lista de \texttt{LandmarkMetadata}, é então armazenado no serviço Firestore, juntamente com a atualização do estado da submissão para \texttt{SUCCESS} ou \texttt{FAILURE}, consoante o sucesso da operação.
+
+Este mecanismo baseado em Pub/Sub garante que os pedidos de análise não se perdem, mesmo em caso de falha temporária dos workers, e permite processar múltiplas imagens em paralelo, consoante o número de instâncias ativas no grupo \texttt{LandmarksApp}. A arquitetura é, por isso, altamente escalável e compatível com o modelo de computação em nuvem.
 
 \subsection{Função Cloud IPLookup}
 \label{ssec:cloud_function_iplookup}
