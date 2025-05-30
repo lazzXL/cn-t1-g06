@@ -233,6 +233,7 @@ public class Client {
             ConnectivityState state = channel.getState(true);
 
             while (state != ConnectivityState.READY) {
+                System.out.println("Connection state: " + state);
                 final CountDownLatch latch = new CountDownLatch(1);
                 channel.notifyWhenStateChanged(state, latch::countDown);
                 try {
